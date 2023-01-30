@@ -1,26 +1,12 @@
 import launch
 from launch import LaunchDescription
-from launch_ros.actions import Node, ComposableNodeContainer
-from launch_ros.descriptions import ComposableNode
-from launch.launch_description_sources import PythonLaunchDescriptionSource
-
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable
-from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node
 
 from ament_index_python.packages import get_package_share_directory
 
 
 def generate_launch_description():
     return LaunchDescription([
-        #SetEnvironmentVariable(name='', value=""),
-        #DeclareLaunchArgument(
-        #    'camera_calibration_file',
-        #    default_value='file://' + get_package_share_directory('cuesr') + '/config/camera.yaml'),
-        #IncludeLaunchDescription(
-        #    PythonLaunchDescriptionSource([get_package_share_directory('realsense2_camera') ,'/launch/rs_launch.py']),
-        #    launch_arguments={}.items(),
-        #),
-
         Node(
            package='joy',
            output='screen',
@@ -53,14 +39,6 @@ def generate_launch_description():
            on_exit=launch.actions.Shutdown()
         ),
         
-        Node(
-           package='tf2_ros',
-           output='screen',
-           executable='static_transform_publisher',
-           arguments=["0", "0", "0", "0", "0", "0", "map", "camera_link"],
-           on_exit=launch.actions.Shutdown()
-        ),
-
         Node(
            package='rviz2',
            executable='rviz2',
