@@ -2,13 +2,6 @@
 
 import sys
 import  numpy as np
-
-
-# find pyecca, doing this for dev right now
-sys.path.insert(0, '/workdir/tools/pyecca')
-
-from pyecca.control.time_allocation import compute_trajectory
-
 import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Path, Odometry
