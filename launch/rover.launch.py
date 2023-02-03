@@ -34,7 +34,7 @@ def generate_launch_description():
         Node(
            package='corti',
            output='screen',
-           executable='rover_planner.py',
+           executable='rover_planner',
            arguments=[],
            on_exit=launch.actions.Shutdown()
         ),

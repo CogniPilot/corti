@@ -15,6 +15,15 @@ find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
+find_package(synapse_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+
+add_executable(rover_planner
+    src/rover_planner.cpp
+    src/casadi/bezier6.c
+    )
+ament_target_dependencies(rover_planner rclcpp synapse_msgs nav_msgs geometry_msgs)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -31,11 +40,14 @@ endif()
 # Install Python modules
 # ament_python_install_package(${PROJECT_NAME})
 
+install(TARGETS
+  rover_planner
+  DESTINATION lib/${PROJECT_NAME})
+
 # Install Python executables
 install(PROGRAMS
   scripts/rover_planner.py
-  DESTINATION lib/${PROJECT_NAME}
-)
+  DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY launch config DESTINATION share/${PROJECT_NAME})
 
