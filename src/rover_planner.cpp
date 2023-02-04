@@ -24,12 +24,12 @@ class RoverPlanner : public rclcpp::Node
     RoverPlanner()
     : Node("rover_planner")
     {
-    // publications
+        // publications
         m_pub_traj = this->create_publisher<synapse_msgs::msg::BezierTrajectory>("traj", 10);
         m_pub_path = this->create_publisher<nav_msgs::msg::Path>("path", 10);
 
-    // subscriptions
-        m_sub_odom = this->create_subscription<nav_msgs::msg::Odometry>("odom", 10,
+        // subscriptions
+        m_sub_odom = this->create_subscription<nav_msgs::msg::Odometry>("/model/MR_Buggy3/odometry", 10,
             std::bind(&RoverPlanner::odom_callback, this, _1));
         m_sub_goal = this->create_subscription<geometry_msgs::msg::PoseStamped>("goal_pose", 10,
             std::bind(&RoverPlanner::goal_callback, this, _1));
@@ -44,23 +44,34 @@ class RoverPlanner : public rclcpp::Node
         double delta_x = msg->pose.position.x - m_odom.pose.pose.position.x;
         double delta_y = msg->pose.position.y - m_odom.pose.pose.position.y;
         double dist = std::sqrt(delta_x*delta_x + delta_y*delta_y);
-        double vel = 1;
-        casadi_real T = dist/vel; // TODO consider turning angle
+        double vel0 = 1;
+        double vel1 = 1;
+        casadi_real T = dist/(vel0 + vel1)/2; // TODO consider turning angle
 
         // solve for PX, PY
         // bezier6_solve:(wp_0[2],wp_1[2],T)->(P[1x6])
         casadi_real PX[6] = {};
         casadi_real PY[6] = {};
         {
+            double psi0 = 2*atan2(m_odom.pose.pose.orientation.z,
+                m_odom.pose.pose.orientation.w);
+            double psi1 = 2*atan2(msg->pose.orientation.z,
+                msg->pose.orientation.w);
+
             const casadi_real * arg[3] = {};
             casadi_real * res[1] = {};
             casadi_real wpx0[2] = {
                 m_odom.pose.pose.position.x,
-                vel};
-            double psi = 2*atan2(msg->pose.orientation.z,
-            msg->pose.orientation.w);
+                vel0*cos(psi0)};
+            casadi_real wpy0[2] = {
+                m_odom.pose.pose.position.y,
+                vel0*sin(psi0)};
             casadi_real wpx1[2] = {
-                msg->pose.position.x, vel*cos(psi)};
+                msg->pose.position.x, vel1*cos(psi1)};
+            casadi_real wpy1[2] = {
+                msg->pose.position.y, vel1*sin(psi1)};
+
+	    // solve for PX
             arg[0] = wpx0;
             arg[1] = wpx1;
             arg[2] = &T;
@@ -71,11 +82,6 @@ class RoverPlanner : public rclcpp::Node
             bezier6_solve(arg, res, iw, w, mem);
 
             // solve for PY
-            casadi_real wpy0[2] = {
-                m_odom.pose.pose.position.y,
-                m_odom.twist.twist.linear.y};
-            casadi_real wpy1[2] = {
-                msg->pose.position.y, vel*sin(psi)};
             arg[0] = wpy0;
             arg[1] = wpy1;
             res[0] = PY;
