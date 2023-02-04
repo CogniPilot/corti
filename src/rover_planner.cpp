@@ -46,7 +46,8 @@ class RoverPlanner : public rclcpp::Node
         double dist = std::sqrt(delta_x*delta_x + delta_y*delta_y);
         double vel0 = 1;
         double vel1 = 1;
-        casadi_real T = dist/(vel0 + vel1)/2; // TODO consider turning angle
+        double avg_vel = (vel0 + vel1)/2;
+        casadi_real T = dist/avg_vel; // TODO consider turning angle
 
         // solve for PX, PY
         // bezier6_solve:(wp_0[2],wp_1[2],T)->(P[1x6])
@@ -71,7 +72,7 @@ class RoverPlanner : public rclcpp::Node
             casadi_real wpy1[2] = {
                 msg->pose.position.y, vel1*sin(psi1)};
 
-	    // solve for PX
+        // solve for PX
             arg[0] = wpx0;
             arg[1] = wpx1;
             arg[2] = &T;
