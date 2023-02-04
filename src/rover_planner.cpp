@@ -86,7 +86,7 @@ class RoverPlanner : public rclcpp::Node
             msg.header.frame_id = "map";
 
             msg.time_start = get_clock()->now().nanoseconds();
-            msg.time_stop = 1.0*1e9 + msg.time_start;
+            msg.time_stop = T*1e9 + msg.time_start;
             for (int i=0; i<6; i++ ) {
                 msg.x.push_back(PX[i]);
                 msg.y.push_back(PY[i]);
@@ -104,10 +104,10 @@ class RoverPlanner : public rclcpp::Node
             casadi_real * w = NULL;
             casadi_real rx[3], ry[3] = {};
             int mem = 0;
-            int traj_steps = 100;
+            int traj_steps = 10;
 
             auto path = nav_msgs::msg::Path();
-      path.header.frame_id = "map";
+            path.header.frame_id = "map";
             auto pose = geometry_msgs::msg::PoseStamped();
             pose.header.frame_id = "map";
             pose.pose.position.z = 0;
@@ -130,7 +130,7 @@ class RoverPlanner : public rclcpp::Node
                 pose.pose.orientation.z = sin(psi/2);
                 path.poses.push_back(pose);
             }
-      m_pub_path->publish(path);
+            m_pub_path->publish(path);
         }
     }
 
