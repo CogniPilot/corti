@@ -9,7 +9,7 @@
 #include "nav_msgs/msg/path.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
-#include "synapse_msgs/msg/polynomial_trajectory.hpp"
+#include "synapse_msgs/msg/bezier_trajectory.hpp"
 
 #include "casadi/bezier6.h"
 
@@ -25,7 +25,7 @@ class RoverPlanner : public rclcpp::Node
     : Node("rover_planner")
     {
     // publications
-        m_pub_traj = this->create_publisher<synapse_msgs::msg::PolynomialTrajectory>("traj", 10);
+        m_pub_traj = this->create_publisher<synapse_msgs::msg::BezierTrajectory>("traj", 10);
         m_pub_path = this->create_publisher<nav_msgs::msg::Path>("path", 10);
 
     // subscriptions
@@ -41,10 +41,10 @@ class RoverPlanner : public rclcpp::Node
     }
     void goal_callback(const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
         RCLCPP_INFO(this->get_logger(), "Goal callback");
-	double delta_x = msg->pose.position.x - m_odom.pose.pose.position.x;
-	double delta_y = msg->pose.position.y - m_odom.pose.pose.position.y;
-	double dist = std::sqrt(delta_x*delta_x + delta_y*delta_y);
-	double vel = 1;
+        double delta_x = msg->pose.position.x - m_odom.pose.pose.position.x;
+        double delta_y = msg->pose.position.y - m_odom.pose.pose.position.y;
+        double dist = std::sqrt(delta_x*delta_x + delta_y*delta_y);
+        double vel = 1;
         casadi_real T = dist/vel; // TODO consider turning angle
 
         // solve for PX, PY
@@ -57,8 +57,8 @@ class RoverPlanner : public rclcpp::Node
             casadi_real wpx0[2] = {
                 m_odom.pose.pose.position.x,
                 vel};
-	    double psi = 2*atan2(msg->pose.orientation.z,
-			    msg->pose.orientation.w);
+            double psi = 2*atan2(msg->pose.orientation.z,
+            msg->pose.orientation.w);
             casadi_real wpx1[2] = {
                 msg->pose.position.x, vel*cos(psi)};
             arg[0] = wpx0;
@@ -81,6 +81,18 @@ class RoverPlanner : public rclcpp::Node
             res[0] = PY;
             bezier6_solve(arg, res, iw, w, mem);
 
+
+            synapse_msgs::msg::BezierTrajectory msg;
+            msg.header.frame_id = "map";
+
+            msg.time_start = get_clock()->now().nanoseconds();
+            msg.time_stop = 1.0*1e9 + msg.time_start;
+            for (int i=0; i<6; i++ ) {
+                msg.x.push_back(PX[i]);
+                msg.y.push_back(PY[i]);
+                msg.z.push_back(0);
+            }
+            m_pub_traj->publish(msg);
         }
 
         // visualize in rviz
@@ -95,7 +107,7 @@ class RoverPlanner : public rclcpp::Node
             int traj_steps = 100;
 
             auto path = nav_msgs::msg::Path();
-	    path.header.frame_id = "map";
+      path.header.frame_id = "map";
             auto pose = geometry_msgs::msg::PoseStamped();
             pose.header.frame_id = "map";
             pose.pose.position.z = 0;
@@ -118,11 +130,11 @@ class RoverPlanner : public rclcpp::Node
                 pose.pose.orientation.z = sin(psi/2);
                 path.poses.push_back(pose);
             }
-	    m_pub_path->publish(path);
+      m_pub_path->publish(path);
         }
     }
 
-    rclcpp::Publisher<synapse_msgs::msg::PolynomialTrajectory>::SharedPtr m_pub_traj;
+    rclcpp::Publisher<synapse_msgs::msg::BezierTrajectory>::SharedPtr m_pub_traj;
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr m_pub_path;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr m_sub_odom;
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr m_sub_goal;

@@ -6,14 +6,14 @@ import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Path, Odometry
 from geometry_msgs.msg import PoseStamped
-from synapse_msgs.msg import PolynomialTrajectory
+from synapse_msgs.msg import BezierTrajectory
 
 
 class RoverPlanner(Node):
 
     def __init__(self):
         super().__init__('minimal_publisher')
-        self.pub_traj = self.create_publisher(PolynomialTrajectory, 'traj', 10)
+        self.pub_traj = self.create_publisher(BezierTrajectory, 'traj', 10)
         self.pub_path = self.create_publisher(Path, 'path', 10)
         self.sub_goal = self.create_subscription(PoseStamped, 'goal_pose', self.goal_callback, 10)
         self.sub_odom = self.create_subscription(
@@ -26,21 +26,21 @@ class RoverPlanner(Node):
         
     def goal_callback(self, msg: PoseStamped):
         self.get_logger().info(f'goal callback')
+        now = self.get_clock().now()
         
         # check if odometry received
         if self.odom.header.stamp == 0:
             return
-        
-        #compute_trajectory()
-        time_start = 0.0
-        time_end = 1.0
+        sec, nsecs = now.seconds_nanoseconds()
+        time_start = sec*1e9 + nsecs
+        time_end = time_start + 1*1e9
         
         x0 = self.odom.pose.pose.position.x
         y0 = self.odom.pose.pose.position.y
         goal_x = msg.pose.position.x 
         goal_y = msg.pose.position.y
         
-        dt = time_end - time_start
+        dt = (time_end - time_start)/1e9
         vx = (goal_x - x0)/dt
         vy = (goal_y - y0)/dt
         
@@ -48,7 +48,7 @@ class RoverPlanner(Node):
         coef_y = [0.0, 0.0, 0.0, 0.0, vy, y0]
         
         # publish trajectory to cerebri
-        traj = PolynomialTrajectory()
+        traj = BezierTrajectory()
         traj.time_start = time_start
         traj.time_end = time_end
         traj.sequence = self.seq
@@ -62,7 +62,7 @@ class RoverPlanner(Node):
         # publish path to visualize on rviz
         path = Path()
         path.header.frame_id = 'map'
-        t = np.linspace(time_start + 1e-4, time_end, 10)
+        t = np.linspace(time_start + 1, time_end, 10)*1e-9
         x = np.polyval(coef_x, t)
         y = np.polyval(coef_y, t)
         self.get_logger().info(f'vx: {vx}, vy: {vy}')

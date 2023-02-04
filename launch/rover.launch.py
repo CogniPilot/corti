@@ -23,7 +23,7 @@ def generate_launch_description():
              # joystick from ROS to Gazebo
              '/joy@sensor_msgs/msg/Joy@gz.msgs.Joy',
              # trajectory from ROS to Gazesbo
-             '/traj@synapse_msgs/msg/PolynomialTrajectory@gz.msgs.PolynomialTrajectory',
+             '/traj@synapse_msgs/msg/BezierTrajectory@gz.msgs.BezierTrajectory',
              # odometry from Gazebo model to ROS
              '/model/MR_Buggy3/odometry@nav_msgs/msg/Odometry@gz.msgs.Odometry',
              '/model/MR_Buggy3/odometry_with_covariance@nav_msgs/msg/Odometry@gz.msgs.OdometryWithCovariance'

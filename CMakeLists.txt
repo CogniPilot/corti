@@ -19,11 +19,17 @@ find_package(synapse_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 
-add_executable(rover_planner
-    src/rover_planner.cpp
+add_library(bezier6
     src/casadi/bezier6.c
     )
+target_compile_options(bezier6 PRIVATE -Wno-unused)
+
+add_executable(rover_planner
+    src/rover_planner.cpp
+    )
+
 ament_target_dependencies(rover_planner rclcpp synapse_msgs nav_msgs geometry_msgs)
+target_link_libraries(rover_planner bezier6)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
