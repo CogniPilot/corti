@@ -29,7 +29,7 @@ class RoverPlanner : public rclcpp::Node
         m_pub_path = this->create_publisher<nav_msgs::msg::Path>("path", 10);
 
         // subscriptions
-        m_sub_odom = this->create_subscription<nav_msgs::msg::Odometry>("/model/MR_Buggy3/odometry", 10,
+        m_sub_odom = this->create_subscription<nav_msgs::msg::Odometry>("/model/MRB3_Sensors/odometry", 10,
             std::bind(&RoverPlanner::odom_callback, this, _1));
         m_sub_goal = this->create_subscription<geometry_msgs::msg::PoseStamped>("goal_pose", 10,
             std::bind(&RoverPlanner::goal_callback, this, _1));
@@ -44,8 +44,8 @@ class RoverPlanner : public rclcpp::Node
         double delta_x = msg->pose.position.x - m_odom.pose.pose.position.x;
         double delta_y = msg->pose.position.y - m_odom.pose.pose.position.y;
         double dist = std::sqrt(delta_x*delta_x + delta_y*delta_y);
-        double vel0 = 2;
-        double vel1 = 2;
+        double vel0 = 1;
+        double vel1 = 1;
         double avg_vel = (vel0 + vel1)/2;
         casadi_real T = dist/avg_vel; // TODO consider turning angle
 
