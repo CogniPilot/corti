@@ -50,11 +50,6 @@ install(TARGETS
   rover_planner
   DESTINATION lib/${PROJECT_NAME})
 
-# Install Python executables
-install(PROGRAMS
-  scripts/rover_planner.py
-  DESTINATION lib/${PROJECT_NAME})
-
-install(DIRECTORY launch config DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
 
 ament_package()
