@@ -12,12 +12,15 @@ find_package(ament_cmake REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
+
 find_package(ament_cmake_python REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(synapse_msgs REQUIRED)
-find_package(nav_msgs REQUIRED)
-find_package(geometry_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
 
 add_library(bezier6
     src/casadi/bezier6.c
@@ -27,9 +30,14 @@ target_compile_options(bezier6 PRIVATE -Wno-unused)
 add_executable(rover_planner
     src/rover_planner.cpp
     )
-
 ament_target_dependencies(rover_planner rclcpp synapse_msgs nav_msgs geometry_msgs)
 target_link_libraries(rover_planner bezier6)
+
+add_executable(odom_to_tf
+    src/odom_to_tf.cpp
+    )
+ament_target_dependencies(odom_to_tf nav_msgs tf2 tf2_ros geometry_msgs)
+
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -48,6 +56,7 @@ endif()
 
 install(TARGETS
   rover_planner
+  odom_to_tf
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
