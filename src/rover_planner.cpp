@@ -29,7 +29,7 @@ class RoverPlanner : public rclcpp::Node
         m_pub_path = this->create_publisher<nav_msgs::msg::Path>("path", 10);
 
         // subscriptions
-        m_sub_odom = this->create_subscription<nav_msgs::msg::Odometry>("/model/MRB3_Sensors/odometry", 10,
+        m_sub_odom = this->create_subscription<nav_msgs::msg::Odometry>("/model/mrb3s/odometry", 10,
             std::bind(&RoverPlanner::odom_callback, this, _1));
         m_sub_goal = this->create_subscription<geometry_msgs::msg::PoseStamped>("goal_pose", 10,
             std::bind(&RoverPlanner::goal_callback, this, _1));

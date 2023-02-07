@@ -114,7 +114,7 @@ Visualization Manager:
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /model/MR_Buggy3/odometry_with_covariance
+        Value: /model/mrb3s/odometry_with_covariance
       Value: true
   Enabled: true
   Global Options:
