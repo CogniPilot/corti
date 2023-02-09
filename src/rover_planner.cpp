@@ -24,12 +24,14 @@ class RoverPlanner : public rclcpp::Node
     RoverPlanner()
     : Node("rover_planner")
     {
+        this->declare_parameter("vel", 1.0);
+
         // publications
         m_pub_traj = this->create_publisher<synapse_msgs::msg::BezierTrajectory>("traj", 10);
         m_pub_path = this->create_publisher<nav_msgs::msg::Path>("path", 10);
 
         // subscriptions
-        m_sub_odom = this->create_subscription<nav_msgs::msg::Odometry>("/model/mrb3s/odometry", 10,
+        m_sub_odom = this->create_subscription<nav_msgs::msg::Odometry>("odom", 10,
             std::bind(&RoverPlanner::odom_callback, this, _1));
         m_sub_goal = this->create_subscription<geometry_msgs::msg::PoseStamped>("goal_pose", 10,
             std::bind(&RoverPlanner::goal_callback, this, _1));
@@ -44,10 +46,8 @@ class RoverPlanner : public rclcpp::Node
         double delta_x = msg->pose.position.x - m_odom.pose.pose.position.x;
         double delta_y = msg->pose.position.y - m_odom.pose.pose.position.y;
         double dist = std::sqrt(delta_x*delta_x + delta_y*delta_y);
-        double vel0 = 1;
-        double vel1 = 1;
-        double avg_vel = (vel0 + vel1)/2;
-        casadi_real T = dist/avg_vel; // TODO consider turning angle
+        double vel = this->get_parameter("vel").get_parameter_value().get<double>();
+        casadi_real T = dist/vel;
 
         // solve for PX, PY
         // bezier6_solve:(wp_0[2],wp_1[2],T)->(P[1x6])
@@ -63,16 +63,16 @@ class RoverPlanner : public rclcpp::Node
             casadi_real * res[1] = {};
             casadi_real wpx0[2] = {
                 m_odom.pose.pose.position.x,
-                vel0*cos(psi0)};
+                vel*cos(psi0)};
             casadi_real wpy0[2] = {
                 m_odom.pose.pose.position.y,
-                vel0*sin(psi0)};
+                vel*sin(psi0)};
             casadi_real wpx1[2] = {
-                msg->pose.position.x, vel1*cos(psi1)};
+                msg->pose.position.x, vel*cos(psi1)};
             casadi_real wpy1[2] = {
-                msg->pose.position.y, vel1*sin(psi1)};
+                msg->pose.position.y, vel*sin(psi1)};
 
-        // solve for PX
+            // solve for PX
             arg[0] = wpx0;
             arg[1] = wpx1;
             arg[2] = &T;
