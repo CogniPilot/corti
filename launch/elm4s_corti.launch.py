@@ -19,7 +19,9 @@ def generate_launch_description():
            arguments=['--ros-args', '--log-level', logger],
            parameters=[
              {'use_sim_time': use_sim_time},
-             {'vel': 3.0}
+             {'avg_vel': 2.0},
+             {'vel0': 2.0},
+             {'vel1': 0.0}
            ],
            remappings=[
             ("odom", "/model/elm4s/odometry"),

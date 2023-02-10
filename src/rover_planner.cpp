@@ -24,7 +24,9 @@ class RoverPlanner : public rclcpp::Node
     RoverPlanner()
     : Node("rover_planner")
     {
-        this->declare_parameter("vel", 1.0);
+        this->declare_parameter("avg_vel", 1.0);
+        this->declare_parameter("vel0", 1.0);
+        this->declare_parameter("vel1", 0.1);
 
         // publications
         m_pub_traj = this->create_publisher<synapse_msgs::msg::BezierTrajectory>("traj", 10);
@@ -46,9 +48,9 @@ class RoverPlanner : public rclcpp::Node
         double delta_x = msg->pose.position.x - m_odom.pose.pose.position.x;
         double delta_y = msg->pose.position.y - m_odom.pose.pose.position.y;
         double dist = std::sqrt(delta_x*delta_x + delta_y*delta_y);
-        double vel0 = this->get_parameter("vel").get_parameter_value().get<double>();
-        double vel1 = 0.2;
-        double avg_vel = (vel0 + vel1)/2;
+        double avg_vel = this->get_parameter("avg_vel").get_parameter_value().get<double>();
+        double vel0 = this->get_parameter("vel0").get_parameter_value().get<double>();
+        double vel1 = this->get_parameter("vel1").get_parameter_value().get<double>();
         casadi_real T = dist/avg_vel;
 
         // solve for PX, PY
