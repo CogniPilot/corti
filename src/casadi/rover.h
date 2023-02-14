@@ -12,7 +12,7 @@ extern "C" {
 #define casadi_int long long int
 #endif
 
-int rover(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
+int rover(const casadi_real ** arg, casadi_real ** res, casadi_int * iw, casadi_real * w, int mem);
 int rover_alloc_mem(void);
 int rover_init_mem(int mem);
 void rover_free_mem(int mem);
@@ -23,11 +23,11 @@ void rover_decref(void);
 casadi_int rover_n_in(void);
 casadi_int rover_n_out(void);
 casadi_real rover_default_in(casadi_int i);
-const char* rover_name_in(casadi_int i);
-const char* rover_name_out(casadi_int i);
-const casadi_int* rover_sparsity_in(casadi_int i);
-const casadi_int* rover_sparsity_out(casadi_int i);
-int rover_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w);
+const char * rover_name_in(casadi_int i);
+const char * rover_name_out(casadi_int i);
+const casadi_int * rover_sparsity_in(casadi_int i);
+const casadi_int * rover_sparsity_out(casadi_int i);
+int rover_work(casadi_int * sz_arg, casadi_int * sz_res, casadi_int * sz_iw, casadi_int * sz_w);
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
