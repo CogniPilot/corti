@@ -13,7 +13,6 @@
 
   <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
-  <depend>navmsgs</depend>
   <depend>rclcpp</depend>
   <depend>rclpy</depend>
   <depend>synapse_msgs</depend>
