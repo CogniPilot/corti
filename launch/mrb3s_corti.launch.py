@@ -14,8 +14,8 @@ def generate_launch_description():
            arguments=['--ros-args', '--log-level', logger],
            parameters=[
              {'use_sim_time': use_sim_time},
-             {'avg_vel': 3.0},
-             {'vel0': 3.0},
+             {'avg_vel': 1.5},
+             {'vel0': 1.5},
              {'vel1': 0.1}
            ],
            remappings=[
