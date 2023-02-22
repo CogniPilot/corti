@@ -47,14 +47,4 @@ def generate_launch_description():
             ("odom", "/model/mrb3s/odometry_with_covariance")
            ]
         ),
-        Node(
-           package='tf2_ros',
-           output='log',
-           executable='static_transform_publisher',
-           parameters=[
-             {'use_sim_time': use_sim_time}
-           ],
-           arguments="--x 0 --y 0 --z 0 --roll 0 --pitch 0 --yaw 0 "
-           "--frame-id mrb3s/base_footprint --child-frame-id mrb3s/RPLIDAR_A1M8/Base/lidar".split()
-        ),
     ])
