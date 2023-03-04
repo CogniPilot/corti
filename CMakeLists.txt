@@ -59,6 +59,11 @@ install(TARGETS
   odom_to_tf
   DESTINATION lib/${PROJECT_NAME})
 
-install(DIRECTORY launch config DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
+
+install(PROGRAMS
+  scripts/virtual_joy.py
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 ament_package()
