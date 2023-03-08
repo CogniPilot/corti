@@ -3,13 +3,17 @@
 #include <memory>
 #include <string>
 #include <cmath>
+#include <iostream>
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
 #include "nav_msgs/msg/path.hpp"
-#include "nav_msgs/msg/odometry.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "synapse_msgs/msg/bezier_trajectory.hpp"
+
+#include "tf2/exceptions.h"
+#include "tf2_ros/transform_listener.h"
+#include "tf2_ros/buffer.h"
 
 #include "casadi/bezier6.h"
 
@@ -28,29 +32,44 @@ public:
     this->declare_parameter("vel0", 1.0);
     this->declare_parameter("vel1", 0.1);
 
+    // tranform buffer
+    m_tf_buffer =
+      std::make_unique<tf2_ros::Buffer>(this->get_clock());
+    m_tf_listener =
+      std::make_shared<tf2_ros::TransformListener>(*m_tf_buffer);
+
     // publications
     m_pub_traj = this->create_publisher<synapse_msgs::msg::BezierTrajectory>("traj", 10);
     m_pub_path = this->create_publisher<nav_msgs::msg::Path>("path", 10);
 
     // subscriptions
-    m_sub_odom = this->create_subscription<nav_msgs::msg::Odometry>(
-      "odom", 10,
-      std::bind(&RoverPlanner::odom_callback, this, _1));
     m_sub_goal = this->create_subscription<geometry_msgs::msg::PoseStamped>(
       "goal_pose", 10,
       std::bind(&RoverPlanner::goal_callback, this, _1));
   }
 
 private:
-  void odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
-  {
-    m_odom = *msg;
-  }
   void goal_callback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
   {
-    RCLCPP_INFO(this->get_logger(), "Goal callback");
-    double delta_x = msg->pose.position.x - m_odom.pose.pose.position.x;
-    double delta_y = msg->pose.position.y - m_odom.pose.pose.position.y;
+    std::string childFrame = "base_link";
+    std::string baseFrame = "map";
+    geometry_msgs::msg::TransformStamped tf;
+    try {
+        tf = m_tf_buffer->lookupTransform(
+        baseFrame, childFrame,
+        tf2::TimePointZero);
+    } catch (const tf2::TransformException & ex) {
+        RCLCPP_INFO(
+            this->get_logger(), "Could not transform %s to %s: %s",
+            baseFrame.c_str(), childFrame.c_str(), ex.what());
+        return;
+    }
+    std::cout << "X:" << tf.transform.translation.x << std::endl;
+    std::cout << "Y:" << tf.transform.translation.y << std::endl;
+
+     
+    double delta_x = msg->pose.position.x - tf.transform.translation.x;
+    double delta_y = msg->pose.position.y - tf.transform.translation.y;
     double dist = std::sqrt(delta_x * delta_x + delta_y * delta_y);
     double avg_vel = this->get_parameter("avg_vel").get_parameter_value().get<double>();
     double vel0 = this->get_parameter("vel0").get_parameter_value().get<double>();
@@ -63,8 +82,8 @@ private:
     casadi_real PY[6] = {};
     {
       double psi0 = 2 * atan2(
-        m_odom.pose.pose.orientation.z,
-        m_odom.pose.pose.orientation.w);
+        tf.transform.rotation.z,
+        tf.transform.rotation.w);
       double psi1 = 2 * atan2(
         msg->pose.orientation.z,
         msg->pose.orientation.w);
@@ -72,10 +91,10 @@ private:
       const casadi_real * arg[3] = {};
       casadi_real * res[1] = {};
       casadi_real wpx0[2] = {
-        m_odom.pose.pose.position.x,
+        tf.transform.translation.x,
         vel0 * cos(psi0)};
       casadi_real wpy0[2] = {
-        m_odom.pose.pose.position.y,
+        tf.transform.translation.y,
         vel0 * sin(psi0)};
       casadi_real wpx1[2] = {
         msg->pose.position.x, vel1 * cos(psi1)};
@@ -153,9 +172,11 @@ private:
 
   rclcpp::Publisher<synapse_msgs::msg::BezierTrajectory>::SharedPtr m_pub_traj;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr m_pub_path;
-  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr m_sub_odom;
   rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr m_sub_goal;
-  nav_msgs::msg::Odometry m_odom{};
+
+  std::shared_ptr<tf2_ros::TransformListener> m_tf_listener{nullptr};
+  std::unique_ptr<tf2_ros::Buffer> m_tf_buffer;
+
   size_t m_seq{0};
 };
 

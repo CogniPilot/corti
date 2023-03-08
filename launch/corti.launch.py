@@ -48,8 +48,9 @@ def generate_launch_description():
     )
 
     node_corti = Node(
+       name='corti',
        package='corti',
-       output='log',
+       output='screen',
        executable='rover_planner',
        arguments=['--ros-args', '--log-level', logger],
        parameters=[
@@ -59,7 +60,7 @@ def generate_launch_description():
          {'vel1': 0.1}
        ],
        remappings=[
-        ("odom", ["/model/", vehicle, "/odometry"]),
+        #("odom", ["/model/", vehicle, "/odometry"]),
         ("goal_pose", "goal_pose"),
         ("traj", "traj"),
         ("path", "path")
@@ -68,6 +69,7 @@ def generate_launch_description():
     )
 
     node_odom_to_tf = Node(
+       name='odom_to_tf',
        package='corti',
        output='log',
        executable='odom_to_tf',

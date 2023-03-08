@@ -30,7 +30,7 @@ target_compile_options(bezier6 PRIVATE -Wno-unused)
 add_executable(rover_planner
     src/rover_planner.cpp)
 
-ament_target_dependencies(rover_planner rclcpp synapse_msgs nav_msgs geometry_msgs)
+ament_target_dependencies(rover_planner rclcpp synapse_msgs nav_msgs tf2 tf2_ros geometry_msgs)
 target_link_libraries(rover_planner bezier6)
 
 add_executable(odom_to_tf
