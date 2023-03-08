@@ -43,9 +43,9 @@ def generate_launch_description():
     )
 
     # nodes
-    launch_robot_description = IncludeLaunchDescription(PythonLaunchDescriptionSource(
-        PathJoinSubstitution([FindPackageShare(description), 'launch', 'robot_description.launch.py']))
-    )
+    #launch_robot_description = IncludeLaunchDescription(PythonLaunchDescriptionSource(
+    #    PathJoinSubstitution([FindPackageShare(description), 'launch', 'robot_description.launch.py']))
+    #)
 
     node_corti = Node(
        name='corti',
@@ -68,26 +68,11 @@ def generate_launch_description():
        on_exit=launch.actions.Shutdown()
     )
 
-    node_odom_to_tf = Node(
-       name='odom_to_tf',
-       package='corti',
-       output='log',
-       executable='odom_to_tf',
-       arguments=[],
-       parameters=[
-         {'use_sim_time': use_sim_time}
-       ],
-       remappings=[
-        ("odom", ["/model/", vehicle, "/odometry_with_covariance"])
-       ]
-    )
-
     return LaunchDescription([
         arg_use_sim_time,
         arg_log_level,
         arg_vehicle,
         arg_description,
-        launch_robot_description,
-        node_corti,
-        node_odom_to_tf,
+        #launch_robot_description,
+        node_corti
     ])
