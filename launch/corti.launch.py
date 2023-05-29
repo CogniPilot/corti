@@ -14,8 +14,6 @@ def generate_launch_description():
     # launch substiutions
     use_sim_time = LaunchConfiguration('use_sim_time')
     logger = LaunchConfiguration('log_level')
-    vehicle = LaunchConfiguration('vehicle')
-    description = LaunchConfiguration('description')
 
     # launch arguments
     arg_use_sim_time = DeclareLaunchArgument(
@@ -30,23 +28,6 @@ def generate_launch_description():
         description='Logging level'
     )
 
-    arg_vehicle = DeclareLaunchArgument(
-        'vehicle',
-        default_value=['mrbuggy3'],
-        description='vehicle name'
-    )
-
-    arg_description = DeclareLaunchArgument(
-        'description',
-        default_value=['mrbuggy3_description'],
-        description='vehicle decription'
-    )
-
-    # nodes
-    #launch_robot_description = IncludeLaunchDescription(PythonLaunchDescriptionSource(
-    #    PathJoinSubstitution([FindPackageShare(description), 'launch', 'robot_description.launch.py']))
-    #)
-
     node_corti = Node(
        name='corti',
        package='corti',
@@ -60,9 +41,9 @@ def generate_launch_description():
          {'vel1': 0.1}
        ],
        remappings=[
-        #("odom", ["/model/", vehicle, "/odometry"]),
+        ("odom", "/cerebri/in/odometry"),
         ("goal_pose", "goal_pose"),
-        ("traj", "traj"),
+        ("traj", "/cerebri/in/bezier_trajectory"),
         ("path", "path")
        ],
        on_exit=launch.actions.Shutdown()
@@ -71,8 +52,5 @@ def generate_launch_description():
     return LaunchDescription([
         arg_use_sim_time,
         arg_log_level,
-        arg_vehicle,
-        arg_description,
-        #launch_robot_description,
         node_corti
     ])
