@@ -38,6 +38,11 @@ add_executable(odom_to_tf
 
 ament_target_dependencies(odom_to_tf nav_msgs tf2 tf2_ros geometry_msgs)
 
+add_executable(tf_to_odom
+    src/tf_to_odom.cpp)
+
+ament_target_dependencies(tf_to_odom rclcpp nav_msgs tf2 tf2_ros geometry_msgs)
+
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -57,6 +62,7 @@ endif()
 install(TARGETS
   rover_planner
   odom_to_tf
+  tf_to_odom
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})

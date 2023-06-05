@@ -38,10 +38,9 @@ def generate_launch_description():
          {'use_sim_time': use_sim_time},
          {'avg_vel': 1.5},
          {'vel0': 1.5},
-         {'vel1': 0.1}
+         {'vel1': 1.5}
        ],
        remappings=[
-        ("odom", "/cerebri/in/odometry"),
         ("goal_pose", "goal_pose"),
         ("traj", "/cerebri/in/bezier_trajectory"),
         ("path", "path")

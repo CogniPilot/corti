@@ -176,8 +176,6 @@ private:
 
   std::shared_ptr<tf2_ros::TransformListener> m_tf_listener{nullptr};
   std::unique_ptr<tf2_ros::Buffer> m_tf_buffer;
-
-  size_t m_seq{0};
 };
 
 int main(int argc, char * argv[])
