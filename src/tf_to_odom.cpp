@@ -47,7 +47,9 @@ private:
             return;
         }
         nav_msgs::msg::Odometry msg;
+        msg.child_frame_id = m_target_frame;
         msg.header.stamp = tf.header.stamp;
+        msg.header.frame_id = m_base_frame;
         msg.pose.pose.position.x = tf.transform.translation.x;
         msg.pose.pose.position.y = tf.transform.translation.y;
         msg.pose.pose.position.z = tf.transform.translation.z;
