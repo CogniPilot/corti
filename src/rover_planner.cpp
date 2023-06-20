@@ -9,6 +9,7 @@
 #include "std_msgs/msg/string.hpp"
 #include "nav_msgs/msg/path.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
+#include "synapse_msgs/msg/bezier_curve.hpp"
 #include "synapse_msgs/msg/bezier_trajectory.hpp"
 
 #include "tf2/exceptions.h"
@@ -122,12 +123,14 @@ private:
       msg.header.frame_id = "map";
 
       msg.time_start = get_clock()->now().nanoseconds();
-      msg.time_stop = T * 1e9 + msg.time_start;
+      synapse_msgs::msg::BezierCurve curve;
+      curve.time_stop = T * 1e9 + msg.time_start;
       for (int i = 0; i < 6; i++) {
-        msg.x.push_back(PX[i]);
-        msg.y.push_back(PY[i]);
-        msg.z.push_back(0);
+        curve.x.push_back(PX[i]);
+        curve.y.push_back(PY[i]);
+        curve.z.push_back(0);
       }
+      msg.curves.push_back(curve);
       m_pub_traj->publish(msg);
     }
 
