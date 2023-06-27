@@ -1,14 +1,12 @@
 #include "geometry_msgs/msg/transform_stamped.hpp"
+#include "nav_msgs/msg/odometry.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "tf2/LinearMath/Quaternion.h"
 #include "tf2_ros/transform_broadcaster.h"
-#include "nav_msgs/msg/odometry.hpp"
 #include <nav_msgs/msg/detail/odometry__struct.hpp>
 #include <rclcpp/rate.hpp>
 
-
-class FramePublisher : public rclcpp::Node
-{
+class FramePublisher : public rclcpp::Node {
 public:
     FramePublisher()
         : Node("odom_to_tf")
@@ -16,8 +14,7 @@ public:
         m_async = this->declare_parameter<bool>("async", false);
         m_sync_dt = this->declare_parameter<double>("sync_dt", 0.02);
 
-        m_tf_broadcaster =
-            std::make_unique<tf2_ros::TransformBroadcaster>(*this);
+        m_tf_broadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
         m_sub_odom = this->create_subscription<nav_msgs::msg::Odometry>(
             "/odom", 10,
@@ -25,7 +22,7 @@ public:
 
         if (not m_async) {
             m_timer = this->create_wall_timer(
-                std::chrono::duration<float>{m_sync_dt},
+                std::chrono::duration<float> { m_sync_dt },
                 std::bind(&FramePublisher::on_timer, this));
         }
     }
@@ -40,13 +37,15 @@ private:
         }
     }
 
-    void on_timer() {
+    void on_timer()
+    {
         if (m_odom != NULL) {
             publish_tf(m_odom);
         }
     }
 
-    void publish_tf(const std::shared_ptr<nav_msgs::msg::Odometry>) {
+    void publish_tf(const std::shared_ptr<nav_msgs::msg::Odometry>)
+    {
         geometry_msgs::msg::TransformStamped t;
 
         // header
@@ -76,13 +75,13 @@ private:
     // attributes
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr m_sub_odom;
     std::unique_ptr<tf2_ros::TransformBroadcaster> m_tf_broadcaster;
-    std::shared_ptr<nav_msgs::msg::Odometry> m_odom{NULL};
+    std::shared_ptr<nav_msgs::msg::Odometry> m_odom { NULL };
     bool m_async;
     float m_sync_dt;
     rclcpp::TimerBase::SharedPtr m_timer;
 };
 
-int main(int argc, char * argv[])
+int main(int argc, char* argv[])
 {
     rclcpp::init(argc, argv);
     rclcpp::spin(std::make_shared<FramePublisher>());
