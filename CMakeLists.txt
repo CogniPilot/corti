@@ -9,10 +9,6 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
-
 find_package(ament_cmake_python REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
@@ -43,7 +39,6 @@ add_executable(tf_to_odom
 
 ament_target_dependencies(tf_to_odom rclcpp nav_msgs tf2 tf2_ros geometry_msgs)
 
-
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
@@ -57,7 +52,7 @@ if(BUILD_TESTING)
 endif()
 
 # Install Python modules
-# ament_python_install_package(${PROJECT_NAME})
+ament_python_install_package(${PROJECT_NAME})
 
 install(TARGETS
   rover_planner
