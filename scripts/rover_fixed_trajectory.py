@@ -24,12 +24,11 @@ class BezierTrajectoryPublisher(Node):
 
         msg.time_start = time_start
         
-        v  = 20
-        r = 9
+        v  = 2
+        r = .9
         planner = RoverPlanner(x=0, y=0, v=v, theta=0, r=r)
-        # planner.goto(15, 0, v, r)
-        planner.goto(20, 0, v, r)
-        planner.stop(20, 0)
+        planner.goto(2, 0, v, r)
+        planner.stop(2, 0)
         ref_data = planner.compute_ref_data(plot=False)
         
         for i in range(3):
