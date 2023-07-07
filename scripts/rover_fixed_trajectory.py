@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
-
 from synapse_msgs.msg import BezierTrajectory, BezierCurve
-
+from corti.rover_planning import RoverPlanner
 
 class BezierTrajectoryPublisher(Node):
 
@@ -24,13 +23,26 @@ class BezierTrajectoryPublisher(Node):
         print('time start', time_start)
 
         msg.time_start = time_start
-
+        
+        v  = 20
+        r = 9
+        planner = RoverPlanner(x=0, y=0, v=v, theta=0, r=r)
+        # planner.goto(15, 0, v, r)
+        planner.goto(20, 0, v, r)
+        planner.stop(20, 0)
+        ref_data = planner.compute_ref_data(plot=False)
+        
         for i in range(3):
             curve = BezierCurve()
             curve.time_stop = time_start + 5000000000*(i + 1)
-            for j in range(6):
-                curve.x.append(j)
-                curve.y.append(j)
+            poly_x = ref_data['poly_x'].poly_leg[i]
+            x_coef = poly_x.convert().compute_ref_data 
+            poly_y = ref_data['poly_y'].poly_leg[i]
+            y_coef = poly_y.convert().coef
+
+            for j in range(6): #polynomial
+                curve.x.append(poly_x[j])
+                curve.y.append(poly_y[j])
             msg.curves.append(curve)
         
         self.publisher_.publish(msg)
