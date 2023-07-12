@@ -25,23 +25,23 @@ class BezierTrajectoryPublisher(Node):
         msg.time_start = time_start
         
         v  = 2
-        r = .9
+        r = 0.9
         planner = RoverPlanner(x=0, y=0, v=v, theta=0, r=r)
-        planner.goto(2, 0, v, r)
-        planner.stop(2, 0)
+        planner.goto(10, 0, v, r)
+        planner.stop(10, 0)
         ref_data = planner.compute_ref_data(plot=False)
         
         for i in range(3):
             curve = BezierCurve()
             curve.time_stop = time_start + 5000000000*(i + 1)
             poly_x = ref_data['poly_x'].poly_leg[i]
-            x_coef = poly_x.convert().compute_ref_data 
+            x_coef = poly_x.coef 
             poly_y = ref_data['poly_y'].poly_leg[i]
-            y_coef = poly_y.convert().coef
+            y_coef = poly_y.coef
 
             for j in range(6): #polynomial
-                curve.x.append(poly_x[j])
-                curve.y.append(poly_y[j])
+                curve.x.append(x_coef[j])
+                curve.y.append(y_coef[j])
             msg.curves.append(curve)
         
         self.publisher_.publish(msg)

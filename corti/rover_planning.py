@@ -4,7 +4,7 @@ import numpy as np
 import logging
 import sys
 import matplotlib.pyplot as plt
-from rover_control import *
+from .rover_control import *
 from .SE2Lie import *
 """
 This module rover minimum jerk trajectory planning.

@@ -7,7 +7,7 @@ This module impelments an SE2 based rover controller.
 """
 import math
 import numpy as np
-from SE2Lie import *
+from .SE2Lie import *
 
 def solve_control_gain(vr):
     A = -se2(vr, 0, 0).ad_matrix
