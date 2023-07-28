@@ -3,6 +3,7 @@ import rclpy
 from rclpy.node import Node
 from synapse_msgs.msg import BezierTrajectory, BezierCurve
 from corti.rover_planning import RoverPlanner
+import numpy as np
 
 class BezierTrajectoryPublisher(Node):
 
@@ -24,24 +25,26 @@ class BezierTrajectoryPublisher(Node):
 
         msg.time_start = time_start
         
-        v  = 1
+        v  = 5
         r = 1
         planner = RoverPlanner(x=0, y=0, v=v, theta=0, r=r)
-        planner.goto(5, 0, v, r)
-        planner.stop(5, 0)
+        planner.goto(10, 0, v, r)
+        planner.stop(10, 0)
         ref_data = planner.compute_ref_data(plot=False)
         
         for i in range(3):
+            print(i)
             curve = BezierCurve()
             curve.time_stop = time_start + 5000000000*(i + 1)
+            bezier_x_coef = ref_data['bezier_x'][i]
+            bezier_y_coef = ref_data['bezier_y'][i]
             poly_x = ref_data['poly_x'].poly_leg[i]
-            x_coef = poly_x.coef 
+            x_coef = poly_x.coef
             poly_y = ref_data['poly_y'].poly_leg[i]
             y_coef = poly_y.coef
-
             for j in range(6): #polynomial
-                curve.x.append(x_coef[j])
-                curve.y.append(y_coef[j])
+                curve.x.append(bezier_x_coef[j])
+                curve.y.append(bezier_y_coef[j])
             msg.curves.append(curve)
         
         self.publisher_.publish(msg)
@@ -57,7 +60,7 @@ def main(args=None):
     # Destroy the node explicitly
     # (optional - otherwise it will be done automatically
     # when the garbage collector destroys the node object)
-    minimal_publisher.destroy_node()
+    bezier_trajectory_publisher.destroy_node()
     rclpy.shutdown()
 
 

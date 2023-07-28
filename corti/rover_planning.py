@@ -3,6 +3,8 @@ import os
 import numpy as np
 import logging
 import sys
+import sympy
+from sympy import symbols, factorial, Function, summation, binomial, product
 import matplotlib.pyplot as plt
 from .rover_control import *
 from .SE2Lie import *
@@ -127,6 +129,29 @@ def plan_trajectory_1d(poly_order, waypoints, velocities, leg_times, continuity_
     coeff = np.linalg.pinv(A).dot(b)
     return PolyTraj(poly_order=poly_order, coeff=coeff, leg_times=leg_times)
 
+    
+n, i, j, m = symbols('n, i, j, m', integer=True, real=True)
+
+t = symbols('t')
+P = Function('P')
+
+C = sympy.factorial(n)/sympy.factorial(n - j)* summation((-1)**(i + j)*P(i)/(factorial(i)*factorial(j - i)), (i, 0, j)) #use diffe
+    
+n0 = 7
+
+P_vect = sympy.Matrix([P(i) for i in range(n0)])
+    
+C_matrix = sympy.Matrix([C.subs({j: j0, n: n0}).doit() for j0 in range(n0)])
+
+A = C_matrix.jacobian(P_vect)
+
+C_to_B = np.array(A.inv(), dtype=float)
+
+def poly2bezier(C0):
+    print(C0)
+    B0 = C_to_B@C0
+    
+    return B0
 
 def wrap(theta):
     return (theta + np.pi) % (2 * np.pi) - np.pi
@@ -141,8 +166,7 @@ class RoverPlanner:
         
         # started
         pos_stopped = np.array([[x, y]])
-        v_start = v
-        vel_stopped = np.array([[v_start*np.cos(theta), v_start*np.sin(theta)]])
+        vel_stopped = np.array([[0, 0]])
         waypoints.append(pos_stopped)
         velocities.append(vel_stopped)
         
@@ -153,7 +177,7 @@ class RoverPlanner:
         d_accel = r 
         v_accel = v
         vel_accel = v_accel*dir_0
-        T_accel = d_accel/((v_accel + v_start)/2)
+        T_accel = d_accel/((v_accel + 0)/2)
         waypoints.append(pos_accel)
         velocities.append(vel_accel)
         leg_times.append(T_accel)
@@ -244,6 +268,16 @@ class RoverPlanner:
                                 velocities=self.velocities[:, 1],
                                 leg_times=self.leg_times,
                                 continuity_derivs=[])
+        
+        b_x = []
+        b_y = []
+        for i in range(len(self.leg_times)):
+            poly_x = ref_x.poly_leg[i].coef
+            bezier_x = poly2bezier(poly_x)
+            poly_y = ref_y.poly_leg[i].coef
+            bezier_y = poly2bezier(poly_y)
+            b_x.append(bezier_x)
+            b_y.append(bezier_y)
 
         def f_ref_x(t):
             return ref_x(t)
@@ -318,6 +352,8 @@ class RoverPlanner:
             'omega': f_ref_omega,
             'poly_x': ref_x,
             'poly_y': ref_y,
+            'bezier_x': b_x,
+            'bezier_y': b_y,
         }
 
 def simulate_rover(planner: RoverPlanner, freq_d, w1, w2, x0, y0, theta0, vr, dist, case, use_approx, dt, plot=False):
