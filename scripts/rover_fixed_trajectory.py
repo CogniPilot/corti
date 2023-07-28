@@ -3,6 +3,8 @@ import rclpy
 from rclpy.node import Node
 from synapse_msgs.msg import BezierTrajectory, BezierCurve
 from corti.rover_planning import RoverPlanner
+from geometry_msgs.msg import PoseStamped
+from nav_msgs.msg import Path, Odometry
 import numpy as np
 
 class BezierTrajectoryPublisher(Node):
@@ -11,11 +13,16 @@ class BezierTrajectoryPublisher(Node):
         super().__init__('bezier_trajectory_publisher')
         self.publisher_ = self.create_publisher(
                 BezierTrajectory, '/cerebri/in/bezier_trajectory', 10)
+        self.pathpublisher_ = self.create_publisher(
+                Path, '/path', 10)
+        #self.posesub_ = self.create_subscription(
+        #        PoseStamped, '/pose', 10)
         timer_period = 10  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
 
     def timer_callback(self):
         msg = BezierTrajectory()
+        path = Path()
         now = self.get_clock().now()
         sec, nanosec = now.seconds_nanoseconds()
         print('sec', sec)
@@ -25,15 +32,32 @@ class BezierTrajectoryPublisher(Node):
 
         msg.time_start = time_start
         
+        path.header.frame_id = 'map'
+                
         v  = 5
         r = 1
         planner = RoverPlanner(x=0, y=0, v=v, theta=0, r=r)
         planner.goto(10, 0, v, r)
         planner.stop(10, 0)
         ref_data = planner.compute_ref_data(plot=False)
-        
+        t = ref_data['t']
+        pose = PoseStamped()
+        pose.header.frame_id = 'map'
+        pose.pose.orientation.x = 0.0
+        pose.pose.orientation.y = 0.0
+        pose.pose.position.z = 0.0
+
+        for k in range(t.shape[0]):
+            rx = ref_data['x'](t[k]) 
+            ry = ref_data['y'](t[k])
+            pose.pose.position.x = rx[0]
+            pose.pose.position.y = ry[0]
+            #psi = np.arctan2()
+            pose.pose.orientation.w = 0.0
+            pose.pose.orientation.z = 0.0 #np.sin(psi/2)
+            path.poses.append(pose)
+
         for i in range(3):
-            print(i)
             curve = BezierCurve()
             curve.time_stop = time_start + 5000000000*(i + 1)
             bezier_x_coef = ref_data['bezier_x'][i]
@@ -48,7 +72,7 @@ class BezierTrajectoryPublisher(Node):
             msg.curves.append(curve)
         
         self.publisher_.publish(msg)
-
+        self.pathpublisher_.publish(path)
 
 def main(args=None):
     rclpy.init(args=args)

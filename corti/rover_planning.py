@@ -352,6 +352,8 @@ class RoverPlanner:
             'omega': f_ref_omega,
             'poly_x': ref_x,
             'poly_y': ref_y,
+            'way_points': np.array([self.px, self.py]),
+            't': np.arange(0, np.sum(self.leg_times), 0.05),
             'bezier_x': b_x,
             'bezier_y': b_y,
         }
