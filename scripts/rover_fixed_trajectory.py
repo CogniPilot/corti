@@ -2,7 +2,7 @@
 import rclpy
 from rclpy.node import Node
 from synapse_msgs.msg import BezierTrajectory, BezierCurve
-from corti.rover_planning import RoverPlanner
+from corti.bezier_rover_planning import generate_path
 from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import Path, Odometry
 import numpy as np
@@ -33,13 +33,29 @@ class BezierTrajectoryPublisher(Node):
         msg.time_start = time_start
         
         path.header.frame_id = 'map'
-                
-        v  = 5
-        r = 1
-        planner = RoverPlanner(x=0, y=0, v=v, theta=0, r=r)
-        planner.goto(10, 0, v, r)
-        planner.stop(10, 0)
-        ref_data = planner.compute_ref_data(plot=False)
+
+        bc_t = np.array([
+        [ # position
+            [1, 2],  # wp0, x, y
+            [-3, 2],   # wp1, x, y
+            [-4, 3],   # wp2, x, y
+            [-4, 0]
+        ],
+        [ # velocity
+            [0, 0],
+            [-0.5, 0],
+            [-1, 0],
+            [0, 0]
+
+        ]])
+        k = 10
+        bez_poly_x, bez_poly_y, bez_traj_x, bez_traj_y = generate_path(bc_t, k)
+        # v  = 5
+        # r = 1
+        # planner = RoverPlanner(x=0, y=0, v=v, theta=0, r=r)
+        # planner.goto(10, 0, v, r)
+        # planner.stop(10, 0)
+        # ref_data = planner.compute_ref_data(plot=False)
         t = ref_data['t']
         pose = PoseStamped()
         pose.header.frame_id = 'map'
