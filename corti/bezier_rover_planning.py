@@ -6,7 +6,7 @@ from pathlib import Path
 from zipfile import ZipFile
 import os
 import datetime
-from TimeOptBez import *
+from .TimeOptBez import *
 
 
 class Bezier:
@@ -110,26 +110,10 @@ def rover_plan(bc,T0):
 
     V = np.sqrt(vx**2 + vy**2)
 
-    return Px, Py, x,vx,ax,jx,sx, y,vy,ay,jy, sy
+    return PX, PY, x,vx,ax,jx,sx, y,vy,ay,jy, sy
 
 def generate_path(bc_t, k):
-    bc_t = np.array([
-        [ # position
-            [1, 2],  # wp0, x, y
-            [-3, 2],   # wp1, x, y
-            [-4, 3],   # wp2, x, y
-            [-4, 0]
-        ],
-        [ # velocity
-            [0, 0],
-            [-0.5, 0],
-            [-1, 0],
-            [0, 0]
-
-        ]
-    ])
-    k = 10
-    # t0 = np.linspace(0, T0, 3000)
+    
     t_total = 0
     Px1 = np.array([])
     Py1 = np.array([])
@@ -149,7 +133,7 @@ def generate_path(bc_t, k):
         bc = bc_t[:,i:i+2,:]
         T0 = 10
         t_total = t_total + T0 
-        Px, Py, x,vx,ax,jx,sx,y,vy,ay,jy,sy= multiRotor_plan(bc,T0)
+        Px, Py, x,vx,ax,jx,sx,y,vy,ay,jy,sy= rover_plan(bc,T0)
         Px1 = np.append(Px1, Px)
         Py1 = np.append(Py1, Py)
         x1 = np.append(x1,x)
@@ -162,29 +146,7 @@ def generate_path(bc_t, k):
         ay1 = np.append(ay1,ay)
         jy1 = np.append(jy1,jy)
         sy1 = np.append(sy1,sy)
-        display(T0)
     t_array = np.linspace(0,t_total,x1.size)
-
-    if True:
-        plt.figure()
-        plt.plot(x1,y1)
-
-        plt.figure()
-        plt.plot(t_array, x1, label='px')
-        plt.plot(t_array, vx1, label='vx', linewidth=2, color='red')
-        plt.plot(t_array, ax1, label='ax', color='orange', linewidth=3)
-        plt.title('X vs time')  
-        plt.legend()
-        plt.grid()
-
-        plt.figure()
-        plt.plot(t_array, y1, label='py')
-        plt.plot(t_array, vy1, label='vy', linewidth=2, color='red')
-        plt.plot(t_array, ay1, label='ay', color='orange', linewidth=3)
-        plt.title('Y vs time')  
-        plt.legend()
-        plt.grid() 
 
     return Px1, Py1, x1, y1
 
-generate_path()

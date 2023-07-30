@@ -35,52 +35,41 @@ class BezierTrajectoryPublisher(Node):
         path.header.frame_id = 'map'
 
         bc_t = np.array([
-        [ # position
-            [1, 2],  # wp0, x, y
-            [-3, 2],   # wp1, x, y
-            [-4, 3],   # wp2, x, y
-            [-4, 0]
-        ],
-        [ # velocity
+            [ # position
+            [0, 0],  # wp0, x, y, z
+            [3, 0],   # wp1, x, y, z
+            [3, 0],   # wp2, x, y, z
+            [3, 0],
+            ],
+            [ # velocity
+            [.5, 0],
             [0, 0],
-            [-0.5, 0],
-            [-1, 0],
+            [0, 0],
             [0, 0]
+            ]])
 
-        ]])
         k = 10
         bez_poly_x, bez_poly_y, bez_traj_x, bez_traj_y = generate_path(bc_t, k)
-        # v  = 5
-        # r = 1
-        # planner = RoverPlanner(x=0, y=0, v=v, theta=0, r=r)
-        # planner.goto(10, 0, v, r)
-        # planner.stop(10, 0)
-        # ref_data = planner.compute_ref_data(plot=False)
-        t = ref_data['t']
         pose = PoseStamped()
         pose.header.frame_id = 'map'
         pose.pose.orientation.x = 0.0
         pose.pose.orientation.y = 0.0
         pose.pose.position.z = 0.0
 
-        for k in range(t.shape[0]):
-            rx = ref_data['x'](t[k]) 
-            ry = ref_data['y'](t[k])
-            pose.pose.position.x = rx[0]
-            pose.pose.position.y = ry[0]
+        for k in range(bez_traj_x.shape[0]):
+            pose.pose.position.x = bez_traj_x[k]
+            pose.pose.position.y = bez_traj_y[k]
             #psi = np.arctan2()
-            pose.pose.orientation.w = 0.0
+            pose.pose.orientation.w = 1.0
             pose.pose.orientation.z = 0.0 #np.sin(psi/2)
             path.poses.append(pose)
 
         for i in range(3):
             curve = BezierCurve()
             curve.time_stop = time_start + 5000000000*(i + 1)
-            poly_x = ref_data['poly_x'].poly_leg[i]
-            x_coef = poly_x.coef
-            poly_y = ref_data['poly_y'].poly_leg[i]
-            y_coef = poly_y.coef
-            for j in range(7): #polynomial
+            x_coef = (bez_poly_x[i*6:(i+1)*6]) 
+            y_coef = (bez_poly_y[i*6:(i+1)*6]) 
+            for j in range(6): #polynomial
                 curve.x.append(x_coef[j])
                 curve.y.append(y_coef[j])
             msg.curves.append(curve)
