@@ -60,15 +60,13 @@ class BezierTrajectoryPublisher(Node):
         for i in range(3):
             curve = BezierCurve()
             curve.time_stop = time_start + 5000000000*(i + 1)
-            bezier_x_coef = ref_data['bezier_x'][i]
-            bezier_y_coef = ref_data['bezier_y'][i]
             poly_x = ref_data['poly_x'].poly_leg[i]
             x_coef = poly_x.coef
             poly_y = ref_data['poly_y'].poly_leg[i]
             y_coef = poly_y.coef
-            for j in range(6): #polynomial
-                curve.x.append(bezier_x_coef[j])
-                curve.y.append(bezier_y_coef[j])
+            for j in range(7): #polynomial
+                curve.x.append(x_coef[j])
+                curve.y.append(y_coef[j])
             msg.curves.append(curve)
         
         self.publisher_.publish(msg)
