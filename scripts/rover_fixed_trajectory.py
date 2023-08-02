@@ -49,19 +49,19 @@ class BezierTrajectoryPublisher(Node):
             ]])
 
         k = 10
-        bez_poly_x, bez_poly_y, bez_traj_x, bez_traj_y = generate_path(bc_t, k)
+        bez_poly_x, bez_poly_y, bez_px, bez_py, bez_vx, bez_vy = generate_path(bc_t, k)
         pose = PoseStamped()
         pose.header.frame_id = 'map'
         pose.pose.orientation.x = 0.0
         pose.pose.orientation.y = 0.0
         pose.pose.position.z = 0.0
 
-        for k in range(bez_traj_x.shape[0]):
-            pose.pose.position.x = bez_traj_x[k]
-            pose.pose.position.y = bez_traj_y[k]
-            #psi = np.arctan2()
-            pose.pose.orientation.w = 1.0
-            pose.pose.orientation.z = 0.0 #np.sin(psi/2)
+        for k in range(bez_px.shape[0]):
+            pose.pose.position.x = bez_px[k]
+            pose.pose.position.y = bez_py[k]
+            psi = np.arctan2(bez_vy[k], bez_vx[k])
+            pose.pose.orientation.w = np.cos(psi/2)
+            pose.pose.orientation.z = np.sin(psi/2)
             path.poses.append(pose)
 
         for i in range(3):

@@ -148,5 +148,5 @@ def generate_path(bc_t, k):
         sy1 = np.append(sy1,sy)
     t_array = np.linspace(0,t_total,x1.size)
 
-    return Px1, Py1, x1, y1
+    return Px1, Py1, x1, y1, vx1, vy1
 
