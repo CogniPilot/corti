@@ -76,15 +76,12 @@ def derive_bezier6():
     A_inv = ca.inv(A)
     P_sol = (A_inv@b).T
 
-    # display(P_sol)
     return {
         'bezier6_solve': ca.Function('bezier6_solve', [wp_0, wp_1, T], [P_sol], ['wp_0', 'wp_1', 'T'], ['P']),
         'bezier6_traj': ca.Function('bezier6_traj', [t, T, P], [r], ['t', 'T', 'P'], ['r']),
-        # 'control_points': ca.Function('control_points', [t, T, P], [P], ['t', 'T', 'P'], ['P'])
     }
 
 def rover_plan(bc,T0):
-    # T0 = 2.3151252777563114  ##Use optimized time from "dev-Bezier_FindOptimizeFunc.ipynb"
     bezier_6 = derive_bezier6()
 
     bc = np.array(bc)

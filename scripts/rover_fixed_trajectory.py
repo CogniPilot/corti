@@ -6,6 +6,7 @@ from corti.bezier_rover_planning import generate_path
 from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import Path, Odometry
 import numpy as np
+import copy
 
 class BezierTrajectoryPublisher(Node):
 
@@ -38,12 +39,12 @@ class BezierTrajectoryPublisher(Node):
             [ # position
             [0, 0],  # wp0, x, y, z
             [3, 0],   # wp1, x, y, z
-            [3, 0],   # wp2, x, y, z
-            [3, 0],
+            [3, -3],   # wp2, x, y, z
+            [3, -3],
             ],
             [ # velocity
-            [.5, 0],
-            [0, 0],
+            [.1, 0],
+            [0.05, 0.1],
             [0, 0],
             [0, 0]
             ]])
@@ -62,6 +63,7 @@ class BezierTrajectoryPublisher(Node):
             psi = np.arctan2(bez_vy[k], bez_vx[k])
             pose.pose.orientation.w = np.cos(psi/2)
             pose.pose.orientation.z = np.sin(psi/2)
+            pose = copy.deepcopy(pose)
             path.poses.append(pose)
 
         for i in range(3):
