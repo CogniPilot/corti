@@ -81,6 +81,10 @@ def derive_bezier6():
         'bezier6_traj': ca.Function('bezier6_traj', [t, T, P], [r], ['t', 'T', 'P'], ['r']),
     }
 
+def rover_timeOpt(bc,k_time): ## Currently outputs optimized time
+    time_opt = find_opt_time(6, bc,k_time)
+    return np.average(time_opt)
+
 def rover_plan(bc,T0):
     bezier_6 = derive_bezier6()
 
@@ -93,57 +97,31 @@ def rover_plan(bc,T0):
     PY = bezier_6['bezier6_solve'](bc[:, 0, 1], bc[:, 1, 1], T0)
     traj_y = np.array(bezier_6['bezier6_traj'](np.array([t0]), T0, PY)).T
 
-    x = traj_x[:, 0]
-    vx = traj_x[:, 1]
-    ax = traj_x[:, 2]
-    jx = traj_x[:,3]
-    sx = traj_x[:,4]
-
-    y = traj_y[:, 0]
-    vy = traj_y[:, 1]
-    ay = traj_y[:, 2]
-    jy = traj_y[:, 3]
-    sy = traj_y[:, 4]
-
     V = np.sqrt(vx**2 + vy**2)
 
-    return PX, PY, x,vx,ax,jx,sx, y,vy,ay,jy, sy
+    return PX, PY, traj_x, traj_y
 
 def generate_path(bc_t, k):
     
     t_total = 0
-    Px1 = np.array([])
-    Py1 = np.array([])
-    x1 = np.array([])
-    vx1 = np.array([])
-    ax1 = np.array([])
-    jx1 = np.array([])
-    sx1 = np.array([])
-    y1 = np.array([])
-    vy1 = np.array([])
-    ay1 = np.array([])
-    jy1 = np.array([])
-    sy1 = np.array([])
-
+    res = {
+        'anchor_x': [],
+        'anchor_y': [],
+        'traj_x': [],
+        'traj_y': [],
+        'T0': [],
+    }
 
     for i in range(bc_t.shape[1]-1):
         bc = bc_t[:,i:i+2,:]
-        T0 = 10
+        T0 = rover_timeOpt(bc, k) 
         t_total = t_total + T0 
-        Px, Py, x,vx,ax,jx,sx,y,vy,ay,jy,sy= rover_plan(bc,T0)
-        Px1 = np.append(Px1, Px)
-        Py1 = np.append(Py1, Py)
-        x1 = np.append(x1,x)
-        vx1 = np.append(vx1,vx)
-        ax1 = np.append(ax1,ax)
-        jx1 = np.append(jx1,jx)
-        sx1 = np.append(sx1,sx)
-        y1 = np.append(y1,y)
-        vy1 = np.append(vy1,vy)
-        ay1 = np.append(ay1,ay)
-        jy1 = np.append(jy1,jy)
-        sy1 = np.append(sy1,sy)
-    t_array = np.linspace(0,t_total,x1.size)
+        Px, Py, traj_x, traj_y = rover_plan(bc,T0)
 
-    return Px1, Py1, x1, y1, vx1, vy1
+        res['anchor_x'].extend(np.array(Px).tolist())
+        res['anchor_y'].extend(np.array(Py).tolist())
+        res['traj_x'].append(np.array(traj_x).tolist())
+        res['traj_y'].append(np.array(traj_x).tolist())
+
+    return res
 
