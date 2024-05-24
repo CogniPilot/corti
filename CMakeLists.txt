@@ -72,4 +72,9 @@ install(PROGRAMS
   DESTINATION lib/${PROJECT_NAME}
 )
 
+install(PROGRAMS
+  scripts/multirotor_fixed_trajectory.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 ament_package()

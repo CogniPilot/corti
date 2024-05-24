@@ -174,5 +174,33 @@ def find_opt_time(bez_deg, bc, k_time, n_legs = 1):
     
     return T_opt ## Optimzied T leg time for eval in Bezier
 
+def find_opt_multirotor_time(bz_deg, bz_psi_deg, bc, bc_psi, k_time, n_legs = 1):
+    '''
+    Takes bezier degree, initial waypoint, and final waypoint
+    waypoints are [[position], [velocity]]
+    
+    Using Scipy.Optimize function, outputs optimized leg time
+    '''
+
+    T = sympy.Symbol('T')
+    Ti = sympy.symbols('T_0:{:d}'.format(n_legs))
+    k = sympy.symbols('k') #weight on time
+
+    J_total_x = find_cost_function(bz_deg, bc[:,0, 0], bc[:, 1, 0], n_legs)
+    J_total_y = find_cost_function(bz_deg, bc[:,0, 1], bc[:, 1, 1], n_legs)
+    J_total_z = find_cost_function(bz_deg, bc[:,0, 2], bc[:, 1, 2], n_legs)
+    J_total_psi = find_cost_function(bz_psi_deg, bc_psi[:, 0, 2], bc_psi[:, 1, 2], n_legs)
+
+    J_total = J_total_x + J_total_y +J_total_z + J_total_psi+ k * sum(Ti) # Sum of all components' jerk term
+    J_total = J_total.subs(T,sy.Matrix(Ti)).doit()
+    f_J = sympy.lambdify([Ti,k],J_total)
+
+    # k_time = 10 #weight on time
+    
+    sol = scipy.optimize.minimize(lambda T: f_J(T,k_time), [1]*n_legs, bounds=[[0.1, 100]]* n_legs)
+    T_opt = sol['x']
+    
+    return T_opt ## Optimzied T leg time for eval in Bezier
+
 
 
