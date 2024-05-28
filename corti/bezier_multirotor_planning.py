@@ -64,7 +64,7 @@ def derive_bezier7():
     constraints += [(B.eval(0), wp_0[0])]  # pos @ wp0
     constraints += [(B_d.eval(0), wp_0[1])]  # vel @ wp0
     constraints += [(B_d2.eval(0), wp_0[2])]  # zero accel @ wp0
-    constraints += [(B_d3.eval(T), wp_0[3])]  # zero accel @ wp1
+    constraints += [(B_d3.eval(0), wp_0[3])]  # zero accel @ wp1
     constraints += [(B.eval(T), wp_1[0])]  # pos @ wp1
     constraints += [(B_d.eval(T), wp_1[1])]  # vel @ wp1
     constraints += [(B_d2.eval(T), wp_1[2])]  # zero accel @ wp1

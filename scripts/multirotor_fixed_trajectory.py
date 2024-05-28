@@ -33,17 +33,33 @@ class BezierTrajectoryPublisher(Node):
         bc_t = np.array([
             [ # position
             [0, 0, 0],  # wp0, x, y, z
-            [1, 0, 0.1],   # wp1, x, y, z
+            [0, 0, 2],  # wp0, x, y, z
+            [0, -5, 2],
+            [5, -5, 2],
+            [5, 0, 2],
+            [0, 0, 2],
             ],
             [ # velocity
+            [0, 0, 0.1],  # wp0, x, y, z
             [0, 0, 0],
-            [0, 0, 0],
+            [0.5, -0.5, 0],
+            [0.5, 0.5, 0],
+            [-0.5, 0.5, 0],
+            [-0.5, 0, 0],
             ],
             [ # accel
             [0, 0, 0],
             [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0],  # wp0, x, y, z
             ],
             [ # jerk
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0],  # wp0, x, y, z
             [0, 0, 0],
             [0, 0, 0],
             ]])
@@ -51,8 +67,16 @@ class BezierTrajectoryPublisher(Node):
             [ # attitude
             [0, 0, 0],
             [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0],
             ],
             [ # angular velocity
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0],
             [0, 0, 0],
             [0, 0, 0],
             ]])
@@ -67,7 +91,7 @@ class BezierTrajectoryPublisher(Node):
         for i in range(bc_t.shape[1] - 1):
             bc = bc_t[:, i:i+2, :]
             bc_psi = bc_psi_list[:, i:i+2, :]
-            T0 = 20 #find_opt_multirotor_time(8, 4, bc, bc_psi, k, 1)[0]
+            T0 = 10 #find_opt_multirotor_time(8, 4, bc, bc_psi, k, 1)[0]
             PX = np.array(self.bezier7['bezier7_solve'](bc[:, 0, 0], bc[:, 1, 0], T0)).reshape(-1)
             PY = np.array(self.bezier7['bezier7_solve'](bc[:, 0, 1], bc[:, 1, 1], T0)).reshape(-1)
             PZ = np.array(self.bezier7['bezier7_solve'](bc[:, 0, 2], bc[:, 1, 2], T0)).reshape(-1)
