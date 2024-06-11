@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python_cyecca
 import rclpy
 from rclpy.node import Node
 from synapse_msgs.msg import BezierTrajectory, BezierCurve
