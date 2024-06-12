@@ -60,12 +60,13 @@ install(TARGETS
   tf_to_odom
   DESTINATION lib/${PROJECT_NAME})
 
-install(DIRECTORY launch meshes DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
 
 install(PROGRAMS
   scripts/virtual_joy.py
   scripts/rover_fixed_trajectory.py
   scripts/multirotor_fixed_trajectory.py
+  scripts/rviz_model.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
