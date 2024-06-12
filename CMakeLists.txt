@@ -60,19 +60,11 @@ install(TARGETS
   tf_to_odom
   DESTINATION lib/${PROJECT_NAME})
 
-install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY launch meshes DESTINATION share/${PROJECT_NAME})
 
 install(PROGRAMS
   scripts/virtual_joy.py
-  DESTINATION lib/${PROJECT_NAME}
-)
-
-install(PROGRAMS
   scripts/rover_fixed_trajectory.py
-  DESTINATION lib/${PROJECT_NAME}
-)
-
-install(PROGRAMS
   scripts/multirotor_fixed_trajectory.py
   DESTINATION lib/${PROJECT_NAME}
 )
