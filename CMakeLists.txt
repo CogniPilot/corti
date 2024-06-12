@@ -66,7 +66,6 @@ install(PROGRAMS
   scripts/virtual_joy.py
   scripts/rover_fixed_trajectory.py
   scripts/multirotor_fixed_trajectory.py
-  scripts/rviz_model.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
