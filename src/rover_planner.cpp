@@ -4,6 +4,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <synapse_msgs/msg/detail/bezier_trajectory__struct.hpp>
 
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nav_msgs/msg/path.hpp"
@@ -117,9 +118,18 @@ private:
             synapse_msgs::msg::BezierTrajectory msg;
             msg.header.frame_id = "map";
 
-            msg.time_start = get_clock()->now().nanoseconds();
+            int64_t start_nanos = get_clock()->now().nanoseconds();
+            int64_t stop_nanos = get_clock()->now().nanoseconds();
+
+            msg.time_start.sec = start_nanos / 1e9;
+            msg.time_start.nanosec = msg.time_start.sec * 1e9 - start_nanos;
+
             synapse_msgs::msg::BezierCurve curve;
-            curve.time_stop = T * 1e9 + msg.time_start;
+            stop_nanos = T * 1e9 + start_nanos;
+
+            curve.time_stop.sec = stop_nanos / 1e9;
+            curve.time_stop.nanosec = curve.time_stop.sec * 1e9 - stop_nanos;
+
             for (int i = 0; i < 6; i++) {
                 curve.x.push_back(PX[i]);
                 curve.y.push_back(PY[i]);
@@ -183,3 +193,5 @@ int main(int argc, char* argv[])
     rclcpp::shutdown();
     return 0;
 }
+
+// vi: ts=4 sw=4 et :
