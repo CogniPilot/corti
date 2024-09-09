@@ -63,6 +63,7 @@ install(TARGETS
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
 
 install(PROGRAMS
+  scripts/PID_ros.py
   scripts/virtual_joy.py
   scripts/rover_fixed_trajectory.py
   scripts/multirotor_fixed_trajectory.py

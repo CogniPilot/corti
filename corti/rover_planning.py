@@ -1,12 +1,8 @@
-from cProfile import label
-import os
 import numpy as np
 import logging
 import sys
 import matplotlib.pyplot as plt
-"""
-This module rover minimum jerk trajectory planning.
-"""
+from corti.rover_control import compute_control
 
 class PolyTraj:
     
@@ -159,8 +155,6 @@ class RoverPlanner:
         self.waypoints = np.vstack(waypoints)
         self.velocities = np.vstack(velocities)
         self.leg_times = np.array(leg_times)
-        self.px = []
-        self.py = []
 
     def stop(self, x, y):
         pos = np.array([x, y])
@@ -242,6 +236,7 @@ class RoverPlanner:
                                 velocities=self.velocities[:, 1],
                                 leg_times=self.leg_times,
                                 continuity_derivs=[])
+        t = np.arange(0, np.sum(self.leg_times), 0.1)
 
         def f_ref_x(t):
             return ref_x(t)
@@ -249,18 +244,9 @@ class RoverPlanner:
         def f_ref_y(t):
             return ref_y(t)
     
-        def f_ref_V(t): # ref_x(t, 1): first derivative of x
+        def f_ref_V(t):
             return np.sqrt(ref_x(t, 1)**2 + ref_y(t, 1)**2)
         
-        def f_ref_vx(t):
-            return ref_x(t, 1)
-        
-        def f_ref_vy(t):
-            return ref_y(t, 1)
-        
-        def f_ref_a(t):
-            return (ref_x(t, 1)*ref_x(t, 2) + ref_y(t, 1)*ref_y(t, 2))/f_ref_V(t)
-
         def f_ref_omega(t):
             return (ref_x(t, 1)*ref_y(t, 2) - ref_y(t, 1)*\
                                ref_x(t, 2))/f_ref_V(t)**2
@@ -268,91 +254,99 @@ class RoverPlanner:
         def f_ref_theta(t):
             return np.arctan2(ref_y(t, 1), ref_x(t, 1))
 
-        def f_ref_alpha(t):
-            return (ref_y(t, 3)*ref_x(t, 1)**3 + ref_y(t, 1)**2*(2*ref_x(t, 2)*ref_y(t,2) - ref_x(t, 3)*ref_y(t, 1)) +
-                    ref_x(t, 1)*ref_y(t, 1)*(2*ref_x(t, 2)**2 - 2*ref_y(t, 2)**2 + ref_y(t, 3)*ref_y(t, 1)) + 
-                    ref_x(t, 1)**2*(-ref_x(t, 3)*ref_y(t, 1)-2*ref_x(t, 2)*ref_y(t, 2)))/f_ref_V(t)**4
-
         if plot:
-            t = np.arange(0, np.sum(self.leg_times), 0.1)
-            self.px = ref_x(t)
-            self.py = ref_y(t)
             plt.figure()
             plt.plot(ref_x(t), ref_y(t))
-            plt.plot(self.waypoints[:, 0], self.waypoints[:, 1], 'x', label='waypoints')
+            plt.plot(self.waypoints[:, 0], self.waypoints[:, 1], 'x')
             plt.axis('equal')
-            plt.title('Planned Trajectory', fontsize=20)
-            plt.legend(loc=1, prop={'size': 20})
-            plt.grid()
-            plt.xlabel('x, m', fontsize=20)
-            plt.ylabel('y, m', fontsize=20)
+            plt.title('planned trajectory')
+            plt.xlabel('x, m')
+            plt.ylabel('y, m')
 
             plt.figure()
-            plt.title('V', fontsize=20)
+            plt.title('V')
             plt.plot(t, f_ref_V(t))
             plt.grid()
-            plt.vlines(np.cumsum(self.leg_times), 0.8, 1.2, color='r', alpha=0.5)
-            plt.xlabel('t, sec', fontsize=20)
-            plt.ylabel('m/s', fontsize=20)
+            plt.vlines(np.cumsum(self.leg_times), 0, 2, color='r', alpha=0.5)
+            plt.xlabel('t, sec')
+            plt.ylabel('m/s')
 
             plt.figure()
-            plt.title('Vx', fontsize=20)
-            plt.plot(t, f_ref_vx(t))
+            plt.title('omega')
+            plt.plot(t, np.rad2deg(f_ref_omega(t)))
             plt.grid()
-            plt.vlines(np.cumsum(self.leg_times), 0.8, 1.2, color='r', alpha=0.5)
-            plt.xlabel('t, sec', fontsize=20)
-            plt.ylabel('m/s', fontsize=20)
-
-            plt.figure()
-            plt.title('Vy', fontsize=20)
-            plt.plot(t, f_ref_vy(t))
-            plt.grid()
-            plt.vlines(np.cumsum(self.leg_times), 0.8, 1.2, color='r', alpha=0.5)
-            plt.xlabel('t, sec', fontsize=20)
-            plt.ylabel('m/s', fontsize=20)
-
-            plt.figure()
-            plt.title('$\omega$', fontsize=20)
-            plt.plot(t, (f_ref_omega(t)))
-            plt.grid()
-            plt.xlabel('t, sec', fontsize=20)
-            plt.ylabel('rad/s', fontsize=20)
-            # plt.savefig('figures/ref_traj_ns.eps', format='eps', bbox_inches='tight')
-
-            plt.figure()
-            plt.title('a', fontsize=20)
-            plt.plot(t, f_ref_a(t))
-            plt.grid()
-            # plt.vlines(np.cumsum(self.leg_times), 0.8, 1.2, color='r', alpha=0.5)
-            plt.xlabel('t, sec', fontsize=20)
-            plt.ylabel('m/s2', fontsize=20)
-
-            plt.figure()
-            plt.title('alpha', fontsize=20)
-            plt.plot(t, (f_ref_alpha(t)))
-            plt.grid()
-            # plt.vlines(np.cumsum(self.leg_times), -60, 60, color='r', alpha=0.5)
-            plt.xlabel('t, sec', fontsize=20)
-            plt.ylabel('rad/s2', fontsize=20)
+            plt.vlines(np.cumsum(self.leg_times), -200, 200, color='r', alpha=0.5)
+            plt.xlabel('t, sec')
+            plt.ylabel('deg/s')
 
             plt.figure()
             plt.title('theta')
-            plt.plot(t, (f_ref_theta(t)))
+            plt.plot(t, np.rad2deg(f_ref_theta(t)))
             plt.grid()
             plt.xlabel('t, sec')
-            plt.ylabel('rad')
+            plt.ylabel('deg')
             plt.vlines(np.cumsum(self.leg_times), -180, 180, color='r', alpha=0.5)
 
         return {
             'x': f_ref_x,
             'y': f_ref_y,
             'V': f_ref_V,
-            'vx': f_ref_vx,
-            'vy': f_ref_vy,
             'theta': f_ref_theta,
             'omega': f_ref_omega,
             'poly_x': ref_x,
             'poly_y': ref_y,
-            'way_points': np.array([self.px, self.py]),
-            't': np.arange(0, np.sum(self.leg_times), 0.1)
+            't': t
         }
+    
+def simulate_rover(planner: RoverPlanner, plot=False):
+
+    def kinematics(t, x_vect, ref_data):
+        x, y, theta = x_vect
+        v, omega = compute_control(t, x, y, theta, ref_data)
+        return [
+            v*np.cos(theta),
+            v*np.sin(theta),
+            omega
+        ]
+
+    t = np.arange(0.1, np.sum(planner.leg_times), 0.1)
+    ref_data = planner.compute_ref_data()
+    import scipy.integrate
+    res = scipy.integrate.solve_ivp(
+        fun=lambda t, x_vect: kinematics(t, x_vect, ref_data),
+            t_span=[t[0], t[-1]], y0=[1, 0.1, np.pi],
+        t_eval=t, method='RK45')
+    return res
+
+
+def plot_rover_sim(res, planner):
+    ref_data = planner.compute_ref_data()
+    t = np.arange(0.1, np.sum(planner.leg_times), 0.1)
+
+    ref_x = ref_data['x']
+    ref_y = ref_data['y']
+    ref_theta = ref_data['theta']
+
+    plt.figure()
+    plt.plot(res.y[0, :], res.y[1, :], '-')
+    plt.plot(ref_x(t), ref_y(t))
+    plt.xlabel('x, m')
+    plt.ylabel('y, m')
+    plt.axis('equal')
+    plt.grid()
+    plt.title('trajectory')
+
+    plt.figure()
+    plt.plot(t, res.y[0, :] - ref_x(t), label='x')
+    plt.plot(t, res.y[1, :] - ref_y(t), label='y')
+    plt.title('position error')
+    plt.grid()
+    plt.xlabel('t, sec')
+    plt.ylabel('m')
+
+    plt.figure()
+    plt.plot(t, np.rad2deg(wrap(ref_theta(t) - res.y[2, :])))
+    plt.grid()
+    plt.title('heading error')
+    plt.xlabel('t, sec')
+    plt.ylabel('deg')
