@@ -1,120 +1,151 @@
 import numpy as np
-import control
-from scipy import signal
 
 """
-This module impelments an SE2 based rover controller.
+This module impelments an SE2 based rover controler.
 """
-import math
-import numpy as np
-from .SE2Lie import *
 
-def solve_control_gain(vr):
-    A = -se2(vr, 0, 0).ad_matrix
-    B = np.array([[1, 0], [0, 0], [0, 1]])
-    Q = 10*np.eye(3)  # penalize state
-    R = 1*np.eye(2)  # penalize input
-    K, _, _ = control.lqr(A, B, Q, R)  # rescale K, set negative feedback sign
-    K = -K
-    A0 = B@K
-    return B, K, A0 #, A+B@K, B@K
+def wrap(theta):
+    return (theta + np.pi) % (2 * np.pi) - np.pi
 
-def control_law(B, K, e, case):
-    if case =='no_side':
-        L = np.diag([1, 0, 1])
-    else:
-        L = np.eye(3)
-    u = L@se2_diff_correction_inv(e)@B@K@e.vee # controller input
-    # print(u)
-    return u
 
-def maxw(sol, x):
-    U1 = np.eye(2)*np.pi/2 # multiply singular val of U
-    U2 = np.array([
-        [0],
-        [0]])
-    P = sol['P']
-    P1 = P[:2, :]
-    P2 = P[2, :]
-    mu1 = sol['mu1'] 
-    mu2 = sol['mu2']
-    alpha = sol['alpha'].real
+class SE2:
     
-    w1 = (U1.T@P1@x + x.T@P1.T@U1)/(2*alpha*mu1) #disturbance for x y
-    w2 = (U2.T@P1 + P2)@x/(alpha*mu2) #disturbance theta
+    def __init__(self, x, y, theta):
+        self.x = x
+        self.y = y
+        self.theta = theta
     
-    return w1, w2
+    def to_matrix(self):
+        x = self.x
+        y = self.y
+        theta = self.theta
+        cos = np.cos
+        sin = np.sin
+        return np.array([
+            [cos(theta), -sin(theta), x],
+            [sin(theta), cos(theta), y],
+            [0, 0, 1]])
 
-def compute_control(t, y_vect, ref_data, freq_d, w1_mag, w2_mag, vr, dist, case, use_approx):
-    # reference data (from planner, function of time)
+    @classmethod
+    def from_matrix(cls, m):
+        theta = np.arctan2(m[1, 0], m[0, 0])
+        x = m[0, 2]
+        y = m[1, 2]
+        return cls(x=x, y=y, theta=theta)
+
+    def __matmul__(self, other):
+        return SE2.from_matrix(self.to_matrix()@other.to_matrix())
+
+    def __repr__(self):
+        return 'x {:g}: y: {:g} theta: {:g}'.format(self.x, self.y, self.theta)
+    
+    def log(self):
+        x = self.x
+        y = self.y
+        theta = self.theta
+        if (np.abs(theta) > 1e-2):
+            a = np.sin(theta)/theta
+            b = (1 - np.cos(theta))/theta
+        else:
+            a = 1 - theta**2/6 + theta**4/120
+            b = theta/2 - theta**3/24 + theta**5/720
+        V_inv = np.array([
+            [a, b],
+            [-b, a]])/(a**2 + b**2)
+        u = V_inv@np.array([x, y])
+        return SE2(x=u[0], y=u[1], theta=theta)
+    
+    def inv(self):
+        x = self.x
+        y = self.y
+        theta = self.theta
+        t = -np.array([
+            [np.cos(theta), np.sin(theta)],
+            [-np.sin(theta), np.cos(theta)]])@np.array([x, y])
+        return SE2(x=t[0], y=t[1], theta=-theta)
+
+
+class se2:
+    
+    def __init__(self, x, y, theta):
+        self.x = x
+        self.y = y
+        self.theta = theta
+    
+    def to_matrix(self):
+        x = self.x
+        y = self.y
+        theta = self.theta
+        return np.array([
+            [0, -theta, x],
+            [theta, 0, y],
+            [0, 0, 0]])
+
+    @classmethod
+    def from_matrix(cls, m):
+        x = m[0, 2]
+        y = m[1, 2]
+        theta = m[1, 0]
+        return cls(x=x, y=y, theta=theta)
+
+    def __repr__(self):
+        return 'x {:g}: y: {:g} theta: {:g}'.format(self.x, self.y, self.theta)
+    
+    def exp(self):
+        x = self.x
+        y = self.y
+        theta = self.theta
+        if (np.abs(theta) > 1e-2):
+            a = np.sin(theta)/theta
+            b = (1 - np.cos(theta))/theta
+        else:
+            a = 1 - theta**2/6 + theta**4/120
+            b = theta/2 - theta**3/24 + theta**5/720
+        V = np.array([
+            [a, -b],
+            [b, a]])
+        u = V@np.array([x, y])
+        return SE2(x=u[0], y=u[1], theta=theta)
+
+
+def compute_control(t, x, y, theta, ref_data):
     ref_x = ref_data['x']
     ref_y = ref_data['y']
     ref_theta = ref_data['theta']
     ref_omega = ref_data['omega']
     ref_V = ref_data['V']
 
-    # reference value at time t
     r_x = float(ref_x(t))
     r_y = float(ref_y(t))
     r_omega = float(ref_omega(t))
     r_theta = float(ref_theta(t))
     r_V = float(ref_V(t))
-    
-    # initial states of vehicle and reference and error
-    X = SE2(x=y_vect[0], y=y_vect[1], theta=y_vect[2])
-    X_r = SE2(x=r_x, y=r_y, theta=r_theta)
-    e = se2(x=y_vect[6], y=y_vect[7], theta=y_vect[8]) # log error
-    
-    # initial error
-    eta = X.inv@X_r # error in Lie group
-    e_nl = eta.log # error in Lie algebra
-    
-    B, K, _ = solve_control_gain(vr)
-    
-    # reference input, coming from planner
-    v_r = se2(x=r_V, y=0, theta=r_omega)
-    
-    # disturbance
-    if dist == 'sine':
-        phi = 1
-        phi2 = 2
-        w = se2(x=np.cos(2*np.pi*freq_d*t+phi)*w1_mag, y=np.sin(2*np.pi*freq_d*t+phi)*w1_mag, theta=np.cos(2*np.pi*freq_d*t+phi2)*w2_mag)
-    # square wave
-    elif dist == 'square':
-        w = se2(x=signal.square(2*np.pi*freq_d*t+np.pi)*w1_mag/np.sqrt(2), y=signal.square(2*np.pi*freq_d*t)*w1_mag/np.sqrt(2), theta=signal.square(2*np.pi*freq_d*t)*w2_mag)
-    # no disturbance
-    else: 
-        w = se2(x=0, y=0, theta=0)
-        
-    # control law applied to non-linear error
-    u_nl = se2.from_vector(control_law(B, K, e_nl, case))
-    v_nl = v_r + u_nl + w
-    
-    # control law applied to log-linear error
-    u = control_law(B, K, e, case)
-    us = se2.from_vector(u)
-    v = v_r + us + w
-        
-    # log error dynamics
-    U = se2_diff_correction(e)
-    if use_approx:
-        # these dynamics don't hold exactly unless you can move sideways
-        e_dot = se2.from_vector((-v_r.ad_matrix + B@K)@e.vee + U@w.vee) # does not have L
-    else:
-        # these dynamics, always hold
-        e_dot = -v_r@e + se2.from_vector(U@(us + w).vee) # real control input with L
-    
-    return [
-        # actual nonlinear 
-        v_nl.x*np.cos(X.theta) - v_nl.y*np.sin(X.theta),
-        v_nl.x*np.sin(X.theta) + v_nl.y*np.cos(X.theta),
-        v_nl.theta,
-        # reference
-        v_r.x*np.cos(X_r.theta) - v_r.y*np.sin(X_r.theta),
-        v_r.x*np.sin(X_r.theta) + v_r.y*np.cos(X_r.theta),
-        v_r.theta,
-        # log error
-        e_dot.x,
-        e_dot.y,
-        e_dot.theta
-    ]
+
+    X_r = SE2(r_x, r_y, r_theta)
+    X = SE2(x, y, theta)
+    eta = X_r.inv()@X
+    chi = eta.log()
+
+    # control parameters
+    K_x = 1.0  # makes vehicle speed up to elim. along track error
+    K_y_to_theta = 2.0  # makes vehicle turn to elim. cross track error
+    K_theta = 4.0  # makes vehicle rotate faster for given theta error
+    omega_max = np.deg2rad(180)  # deg/s max rotation rate saturation
+    y_to_theta_max = np.deg2rad(90)  # y to theta_max saturation, 90 deg, perpin. to track
+
+    v = r_V - K_x*np.real(chi.x)
+    if v < 0:
+        v = 0
+    if v > 1:
+        v = 1
+
+    y_to_theta = K_y_to_theta*np.real(chi.y)
+    if np.abs(y_to_theta > y_to_theta_max):
+        y_to_theta = np.sign(y_to_theta)*y_to_theta_max
+
+    omega = r_omega - K_theta*(np.real(chi.theta) + y_to_theta)
+
+    if abs(omega) > omega_max:
+        omega = np.sign(omega)*omega_max
+
+    return v, omega
