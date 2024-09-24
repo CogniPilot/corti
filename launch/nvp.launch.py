@@ -17,12 +17,17 @@ def generate_launch_description():
        executable='PID_ros.py',
     )
 
+    ppm_bridge = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(get_package_share_directory('ppm_bridge'), 'launch', 'bridge.launch.py')),
+    )
+
     qualisys_node = Node(
         package='qualisys_mocap',
         output='screen',
         executable='qualisys_node'
     )
- 
+
     rviz_node = Node(
         package='rviz2',
         executable='rviz2',
@@ -32,6 +37,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         node_PID,
+        # ppm_bridge,
         qualisys_node,
         rviz_node
     ])

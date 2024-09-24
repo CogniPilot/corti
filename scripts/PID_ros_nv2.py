@@ -7,87 +7,145 @@ from sensor_msgs.msg import Joy
 from tf_transformations import euler_from_quaternion
 import casadi as ca
 import numpy as np
-from corti.nvp_PIDcontrol import PIControl
+from corti.nvp_PIDcontrol import PIDControl
 from corti.rover_planning import RoverPlanner
-from tf_transformations import euler_from_quaternion
 
-v  = 1
-r = 1
-# planner = RoverPlanner(x=2.3, y=-0.8, v=v, theta=np.pi/2, r=r)
-# planner.goto(2, 4.2, v, r)
-# planner.goto(-2, 4.2, v, r)
-# # planner.goto(2.23, 3, v, r)
-# planner.stop(-2, 4.2)
+from corti.dubin_planning import gen_waypoints, gen_reference_trajectory
 
-x0 = 3.45
-y0 = 2.62
-theta0 = -3
+r = 1.22 # turning radius
+n = 100 # number of turning points
 
-xf = -5.24
-yf = 3.6
+x0 = 1.14
+y0 = 8.92
+theta0 = -1.2
 
-planner = RoverPlanner(x=x0, y=y0, v=v, theta=theta0, r=r)
-planner.goto(-5.24, 3.6, v, r)
-planner.stop(xf, yf)
+xf = -3.81
+yf = 3.26
 
-ref_data = planner.compute_ref_data(plot=False)
-t = ref_data['t']
-ref_x_list = ref_data['x'](t).tolist()
-ref_y_list = ref_data['y'](t).tolist()
-ref_theta_list = ref_data['theta'](t).tolist()
+control_point = [(x0, y0), (5.6, 1), (2.22, 2.34), (xf, yf)]
+wp = gen_waypoints(control_point, r, n)
+ref = gen_reference_trajectory(wp, 0.4, 0.01) # wp, vel, dt
+
+ref_x_list = ref[:,0].tolist()
+ref_y_list = ref[:,1].tolist()
+ref_theta_list = ref[:,2].tolist()
+
+ref_v_list = []
+ref_omega_list = []
+for i in range(ref.shape[0]):
+    if i == 0:
+        v = 0
+        omega = 0
+    else:
+        v = np.abs(np.sqrt(ref[i,0]**2+ref[i,1]**2) - np.sqrt(ref[i-1,0]**2+ref[i-1,1]**2))/0.01
+        omega = (ref[i,2] - ref[i-1,2])/0.01
+    ref_v_list.append(v)
+    ref_omega_list.append(omega)
+
+ref_data = {
+        'x': ref_x_list,
+        'y': ref_y_list,
+        'theta': ref_theta_list,
+        'omega': ref_omega_list,
+        'V': ref_v_list,
+    }
 
 
-def find_next_wp(state, traj, curr_idx):
-        max_idx = traj.shape[0]
-        idx = curr_idx
-        while idx<max_idx:
-            if (ca.norm_2(state[:2] - traj[idx][:2]) < 1e-3):
-                return idx
-            else:
-                idx+=1
-        return curr_idx
+# v  = 0.8
+# r = 0.5
+
+# # nvp2 waypoints
+# x0 = 1.14
+# y0 = 8.92
+# theta0 = -1.2
+
+# xf = -3.81
+# yf = 3.26
+# planner = RoverPlanner(x=x0, y=y0, v=v, theta=theta0, r=r)
+# planner.goto(5.6, 1, v, 2)
+# # planner.goto(2.54, 2, v, 1.5)
+# planner.goto(xf, yf, v, 0.5)
+# planner.stop(xf, yf)
+
+# ref_data = planner.compute_ref_data(plot=False)
+# t = ref_data['t']
+# ref_x_list = ref_data['x'](t).tolist()
+# ref_y_list = ref_data['y'](t).tolist()
+# ref_theta_list = ref_data['theta'](t).tolist()
+
 
 class PIDPublisher(Node):
     def __init__(self):
         super().__init__('night_vapor_publisher')
-        self.pub_control_input = self.create_publisher(Twist, '/cmd_vel', 10)
-        self.pub_joy = self.create_publisher(Joy, '/auto_joy', 10)
-        self.sub_mocap = self.create_subscription(Odometry, '/nightvapor1/odom', self.pose_cb, 10)
-        self.pub_ref_path = self.create_publisher(Path, '/ref_path', 10)
-        self.pub_path = self.create_publisher(Path, '/path', 10)
+        # self.pub_control_input = self.create_publisher(Twist, '/cmd_vel', 10)
+        self.pub_joy = self.create_publisher(Joy, '/nv2/auto_joy', 10)
+        self.sub_mocap = self.create_subscription(Odometry, '/nightvapor2/odom', self.pose_cb, 10)
+        self.pub_ref_point = self.create_publisher(PoseStamped, '/ref_point2', 10)
+        self.pub_ref_path = self.create_publisher(Path, '/ref_path2', 10)
+        self.pub_path = self.create_publisher(Path, '/path2', 10)
         self.timer_path = self.create_timer(1, self.publish_ref_path)
         self.timer = self.create_timer(0.01, self.pub_night_vapor)
         self.x = 0.0
         self.y = 0.0
+        self.z = 0.0
         self.theta = 0.0
-        self.time = 0.5
+        self.time = 0
         self.dt = 0.01
-        self.pi_control = PIControl(self.dt)
+        self.pi_control = PIDControl(self.dt, 2)
         self.takeoff = False
         self.taxi = True
         self.takeoff_time = 0.0
         self.x_list = []
         self.y_list = []
+        self.z_list = []
         self.theta_list = []
         self.throttle = 1.0
         self.trail_size = 1000
+        self.prev_x = None
+        self.prev_y = None
+        self.prev_theta = None
+        self.omega_est = None
+        self.omega_est_last = None
+        self.v_est_last = None
+        self.v_est = None
+
 
     def pose_cb(self, msg: Odometry):
         self.x = msg.pose.pose.position.x
         self.y = msg.pose.pose.position.y
+        self.z = msg.pose.pose.position.z
         orientation_q = msg.pose.pose.orientation
         orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
-        # print(orientation_list)
         (roll, pitch, yaw) = euler_from_quaternion(orientation_list)
         self.theta = yaw
-            
-    def pub_night_vapor(self):
-        # print(self.x, self.y, self.theta)
-        x_ref = ref_data['x'](self.time)
-        y_ref = ref_data['y'](self.time)
 
-        # print(throttle, delta)
-        if (np.sqrt((self.x - x_ref)**2 + (self.y - y_ref)**2) < 1) and (self.takeoff == False):
+        if self.prev_x is None:
+            self.prev_x = self.x
+            self.prev_y = self.y
+            self.prev_theta = self.theta
+        alpha = np.exp(-2*np.pi*10*self.dt) # exp(w*T)
+        # alpha = 0.001
+        v_est_new = np.abs((np.sqrt(self.x**2+self.y**2) - np.sqrt(self.prev_x**2+self.prev_y**2))/self.dt)
+        if self.v_est_last is None:
+            self.v_est_last = v_est_new
+        self.v_est = v_est_new*alpha + self.v_est_last*(1-alpha)
+        #print('v: {:10.2f}'.format(self.v_est))
+        
+        omega_est_new = (self.theta - self.prev_theta)
+        if self.omega_est_last is None:
+            self.omega_est_last = omega_est_new
+        self.omega_est = omega_est_new*alpha + self.omega_est_last*(1 - alpha)
+            
+        # print(orientation_list)
+        # print(self.v_est)
+        self.omega_est_last = self.omega_est
+        self.v_est_last = self.v_est
+        self.prev_x = self.x
+        self.prev_y = self.y
+        self.prev_theta = self.theta
+
+    def pub_night_vapor(self):
+        if (self.pi_control.chi.x > -0.5) and (self.takeoff == False):
             self.time += self.dt
             self.taxi = True
             self.takeoff = False
@@ -97,15 +155,17 @@ class PIDPublisher(Node):
             self.takeoff = True
 
         if self.takeoff == True:
-            # self.get_logger().log('takeoff')
+            print('takeoff')
             self.takeoff_time += self.dt
-            self.throttle += -self.dt
-            if self.throttle < -0.6:
-                self.throttle = -0.6
+            self.throttle += 2*self.dt
+            if self.throttle < 0.7:
+                self.throttle = 0.7
             delta = 0
+
         if self.taxi == True:
-            v, omega, self.throttle, delta = self.pi_control.compute_control(self.time, self.x, self.y, self.theta, ref_data)
-        # self.get_logger().log(self.throttle)
+            # print('taxi')
+            v, omega, self.throttle, delta = self.pi_control.compute_control(int(self.time/self.dt), self.x, self.y, self.theta, ref_data, self.v_est, self.omega_est)
+            # print(self.throttle, delta)
         # print(self.time, ref_data['x'](self.time), ref_data['y'](self.time), ref_data['theta'](self.time), self.x, self.y, self.theta)
 
         # vel_msg = Twist()
@@ -113,10 +173,20 @@ class PIDPublisher(Node):
         # vel_msg.angular.z = float(omega)
         # self.pub_control_input.publish(vel_msg)
 
+        ref_pos_msg = PoseStamped()
+        ref_pos_msg.header.frame_id = 'qualisys'
+        ref_pos_msg.pose.position.x = float(ref_data['x'][int(self.time/self.dt)])
+        ref_pos_msg.pose.position.y = float(ref_data['y'][int(self.time/self.dt)])
+        theta = float(ref_data['theta'][int(self.time/self.dt)])
+        ref_pos_msg.pose.orientation.w = np.cos(theta/2)
+        ref_pos_msg.pose.orientation.z = np.sin(theta/2)
+        self.pub_ref_point.publish(ref_pos_msg)
+
+
         joy_msg = Joy()
 
         joy_msg.axes = [0.0]*5
-
+        # print(self.throttle)
         joy_msg.axes[0] = self.throttle
         joy_msg.axes[1] = delta
         # if self.time <= 3.5:
@@ -140,6 +210,7 @@ class PIDPublisher(Node):
         # Append current position to the list
         self.x_list.append(self.x)
         self.y_list.append(self.y)
+        self.z_list.append(self.z)
         self.theta_list.append(self.theta)
         #Publish the trajectory of the vehicle
         self.publish_path()
@@ -166,13 +237,15 @@ class PIDPublisher(Node):
         if len(self.x_list) > self.trail_size:
             del self.x_list[0]
             del self.y_list[0]
+            del self.z_list[0]
             del self.theta_list[0]
-        for x, y, theta in zip(self.x_list, self.y_list, self.theta_list):
+        for x, y, z, theta in zip(self.x_list, self.y_list, self.z_list, self.theta_list):
             pose = PoseStamped()
             pose.header.stamp = self.get_clock().now().to_msg()
             pose.header.frame_id = 'qualisys'
             pose.pose.position.x = x
             pose.pose.position.y = y
+            pose.pose.position.z = z
             pose.pose.orientation.w = np.cos(theta/2)
             pose.pose.orientation.z = np.sin(theta/2)
             msg_path.poses.append(pose)

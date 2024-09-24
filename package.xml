@@ -16,7 +16,7 @@
   <depend>nav_msgs</depend>
   <depend>rclcpp</depend>
   <depend>rclpy</depend>
-  <depend>synapse_msgs</depend>
+  <!-- <depend>synapse_msgs</depend> -->
   <depend>tf2</depend>
   <depend>tf2_ros</depend>
 

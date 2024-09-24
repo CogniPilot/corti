@@ -2,7 +2,7 @@ import numpy as np
 import logging
 import sys
 import matplotlib.pyplot as plt
-from corti.rover_control import compute_control
+# from corti.rover_control import compute_control
 
 class PolyTraj:
     
@@ -125,6 +125,10 @@ def plan_trajectory_1d(poly_order, waypoints, velocities, leg_times, continuity_
 def wrap(theta):
     return (theta + np.pi) % (2 * np.pi) - np.pi
 
+def rot(theta):
+    return np.array([[np.cos(theta), -np.sin(theta)],
+                     [np.sin(theta), np.cos(theta)]])
+
 
 class RoverPlanner:
     
@@ -157,6 +161,7 @@ class RoverPlanner:
         self.leg_times = np.array(leg_times)
 
     def stop(self, x, y):
+        # calculate last leg_time
         pos = np.array([x, y])
         vel_prev = self.velocities[-1] 
         v = np.linalg.norm(vel_prev)
@@ -193,13 +198,16 @@ class RoverPlanner:
         leg_times = []
         
         # turn
-        dtheta = np.abs(wrap(theta1 - theta0))
-        if dtheta > 0:
-            pos_turn = pos_prev + r*dir_0 + r*dir_1
+        dtheta = wrap(theta1 - theta0)
+        if np.abs(dtheta) > 1e-2:
+            print(self.velocities[-1], self.waypoints[-1], 'turn')
+            theta_r = np.pi/2*np.sign(dtheta)
+            pos_turn = pos_prev + r*rot(theta_r)@dir_0 + r*rot(-theta_r)@dir_1
             v_turn = v
             vel_turn = v_turn*dir_1
-            d_turn = r*dtheta
+            d_turn = r*np.abs(dtheta)
             T_turn = d_turn/v_turn*1.1
+            print(vel_turn, pos_turn)
         
             waypoints.append(pos_turn)
             velocities.append(vel_turn)
@@ -214,6 +222,7 @@ class RoverPlanner:
         v_straight = v
         vel_straight = v_straight*dir_1
         T_straight = d_straight/v_straight
+        print('straight', vel_straight, pos_straight)
         
         waypoints.append(pos_straight)
         velocities.append(vel_straight)
@@ -258,10 +267,27 @@ class RoverPlanner:
             plt.figure()
             plt.plot(ref_x(t), ref_y(t))
             plt.plot(self.waypoints[:, 0], self.waypoints[:, 1], 'x')
+            plt.grid()
             plt.axis('equal')
             plt.title('planned trajectory')
             plt.xlabel('x, m')
             plt.ylabel('y, m')
+
+            plt.figure()
+            plt.title('x')
+            plt.plot(t, f_ref_x(t))
+            plt.grid()
+            plt.vlines(np.cumsum(self.leg_times), 0, 2, color='r', alpha=0.5)
+            plt.xlabel('t, sec')
+            plt.ylabel('m/s')
+
+            plt.figure()
+            plt.title('y')
+            plt.plot(t, f_ref_y(t))
+            plt.grid()
+            plt.vlines(np.cumsum(self.leg_times), 0, 2, color='r', alpha=0.5)
+            plt.xlabel('t, sec')
+            plt.ylabel('m/s')
 
             plt.figure()
             plt.title('V')
@@ -297,56 +323,3 @@ class RoverPlanner:
             'poly_y': ref_y,
             't': t
         }
-    
-def simulate_rover(planner: RoverPlanner, plot=False):
-
-    def kinematics(t, x_vect, ref_data):
-        x, y, theta = x_vect
-        v, omega = compute_control(t, x, y, theta, ref_data)
-        return [
-            v*np.cos(theta),
-            v*np.sin(theta),
-            omega
-        ]
-
-    t = np.arange(0.1, np.sum(planner.leg_times), 0.1)
-    ref_data = planner.compute_ref_data()
-    import scipy.integrate
-    res = scipy.integrate.solve_ivp(
-        fun=lambda t, x_vect: kinematics(t, x_vect, ref_data),
-            t_span=[t[0], t[-1]], y0=[1, 0.1, np.pi],
-        t_eval=t, method='RK45')
-    return res
-
-
-def plot_rover_sim(res, planner):
-    ref_data = planner.compute_ref_data()
-    t = np.arange(0.1, np.sum(planner.leg_times), 0.1)
-
-    ref_x = ref_data['x']
-    ref_y = ref_data['y']
-    ref_theta = ref_data['theta']
-
-    plt.figure()
-    plt.plot(res.y[0, :], res.y[1, :], '-')
-    plt.plot(ref_x(t), ref_y(t))
-    plt.xlabel('x, m')
-    plt.ylabel('y, m')
-    plt.axis('equal')
-    plt.grid()
-    plt.title('trajectory')
-
-    plt.figure()
-    plt.plot(t, res.y[0, :] - ref_x(t), label='x')
-    plt.plot(t, res.y[1, :] - ref_y(t), label='y')
-    plt.title('position error')
-    plt.grid()
-    plt.xlabel('t, sec')
-    plt.ylabel('m')
-
-    plt.figure()
-    plt.plot(t, np.rad2deg(wrap(ref_theta(t) - res.y[2, :])))
-    plt.grid()
-    plt.title('heading error')
-    plt.xlabel('t, sec')
-    plt.ylabel('deg')

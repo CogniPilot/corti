@@ -14,7 +14,6 @@ find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
-find_package(synapse_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 
@@ -23,11 +22,11 @@ add_library(bezier6
 
 target_compile_options(bezier6 PRIVATE -Wno-unused)
 
-add_executable(rover_planner
-    src/rover_planner.cpp)
+# add_executable(rover_planner
+#     src/rover_planner.cpp)
 
-ament_target_dependencies(rover_planner rclcpp synapse_msgs nav_msgs tf2 tf2_ros geometry_msgs)
-target_link_libraries(rover_planner bezier6)
+# ament_target_dependencies(rover_planner rclcpp nav_msgs tf2 tf2_ros geometry_msgs)
+# target_link_libraries(rover_planner bezier6)
 
 add_executable(odom_to_tf
     src/odom_to_tf.cpp)
@@ -55,7 +54,7 @@ endif()
 ament_python_install_package(${PROJECT_NAME})
 
 install(TARGETS
-  rover_planner
+  # rover_planner
   odom_to_tf
   tf_to_odom
   DESTINATION lib/${PROJECT_NAME})
@@ -63,7 +62,8 @@ install(TARGETS
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
 
 install(PROGRAMS
-  scripts/PID_ros.py
+  scripts/PID_ros_nv1.py
+  scripts/PID_ros_nv2.py
   scripts/virtual_joy.py
   scripts/rover_fixed_trajectory.py
   scripts/multirotor_fixed_trajectory.py
