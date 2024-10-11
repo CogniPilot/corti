@@ -1,6 +1,7 @@
-#!/usr/bin/env cyecca_python
+#!/usr/bin/env python3.12
 import rclpy
 from rclpy.node import Node
+from rclpy.duration import Duration
 from synapse_msgs.msg import BezierTrajectory, BezierCurve
 from corti.bezier_multirotor_planning import derive_bezier7, derive_bezier3
 from corti.TimeOptBez import find_opt_multirotor_time
@@ -24,7 +25,7 @@ class BezierTrajectoryPublisher(Node):
         self.bezier7 = derive_bezier7()
         self.bezier3 = derive_bezier3()
         self.start_publish = False
-        self.timer_reference = self.create_timer(0.1, self.publish_reference)
+        # self.timer_reference = self.create_timer(0.1, self.publish_reference)
         self.timer_path = self.create_timer(1, self.publish_path)
 
     def plan_traj(self):
@@ -144,16 +145,16 @@ class BezierTrajectoryPublisher(Node):
         msg_traj = BezierTrajectory()
         msg_traj.header.frame_id = 'map'
         now = self.get_clock().now()
-        sec, nanosec = now.seconds_nanoseconds()
-        time_start = sec*1000000000 + nanosec;
-        print('time_start', time_start)
-        msg_traj.time_start = time_start
+        print('time_start', now)
+        msg_traj.time_start = now.to_msg()
         msg_traj.header.stamp = now.to_msg()
-        time_leg_start = time_start
+        time_leg_start = now
         for leg in range(len(self.PX_list)):
             curve = BezierCurve()
-            curve.time_stop = time_leg_start + int(1e9*self.T0_list[leg])
-            time_leg_start = curve.time_stop
+            leg_time = Duration(seconds=self.T0_list[leg])
+            time_stop = time_leg_start + leg_time
+            curve.time_stop = (time_stop).to_msg()
+            time_leg_start = time_stop
             for i in range(len(self.PX_list[leg])):
                 curve.x.append(self.PX_list[leg][i])
                 curve.y.append(self.PY_list[leg][i])
@@ -161,8 +162,11 @@ class BezierTrajectoryPublisher(Node):
             for j in range(len(self.Ppsi_list[leg])):
                 curve.yaw.append(self.Ppsi_list[leg][j])
             msg_traj.curves.append(curve)
+        print("bezier")
         self.msg_traj = msg_traj  # type: BezierTrajectory
-        self.pub_traj.publish(msg_traj)
+        print("publish")
+        self.pub_traj.publish(self.msg_traj)
+        print("finish")
         now = self.get_clock().now()
         sec, nanosec = now.seconds_nanoseconds()
         print('end publish bezier', sec*1e9 + nanosec)
