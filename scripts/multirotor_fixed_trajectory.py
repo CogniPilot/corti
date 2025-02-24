@@ -1,6 +1,8 @@
-#!/usr/bin/env cyecca_python
+#!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
+from rclpy.time import Time
+from rclpy.duration import Duration
 from synapse_msgs.msg import BezierTrajectory, BezierCurve
 from corti.bezier_multirotor_planning import derive_bezier7, derive_bezier3
 from corti.TimeOptBez import find_opt_multirotor_time
@@ -24,7 +26,7 @@ class BezierTrajectoryPublisher(Node):
         self.bezier7 = derive_bezier7()
         self.bezier3 = derive_bezier3()
         self.start_publish = False
-        self.timer_reference = self.create_timer(0.1, self.publish_reference)
+        # self.timer_reference = self.create_timer(0.1, self.publish_reference)
         self.timer_path = self.create_timer(1, self.publish_path)
 
     def plan_traj(self):
@@ -143,17 +145,20 @@ class BezierTrajectoryPublisher(Node):
         # send bezier trajectory to autopilot
         msg_traj = BezierTrajectory()
         msg_traj.header.frame_id = 'map'
-        now = self.get_clock().now()
-        sec, nanosec = now.seconds_nanoseconds()
-        time_start = sec*1000000000 + nanosec;
+        time_start = self.get_clock().now()
         print('time_start', time_start)
-        msg_traj.time_start = time_start
-        msg_traj.header.stamp = now.to_msg()
+        msg_traj.time_start = time_start.to_msg()
+        print('msg_traj', msg_traj.time_start)
+        msg_traj.header.stamp = self.get_clock().now().to_msg()
+        print('msg_header', msg_traj.header.stamp)
         time_leg_start = time_start
+        print('leg', time_leg_start)
         for leg in range(len(self.PX_list)):
             curve = BezierCurve()
-            curve.time_stop = time_leg_start + int(1e9*self.T0_list[leg])
-            time_leg_start = curve.time_stop
+            time_stop = time_leg_start + Duration(seconds=int(self.T0_list[leg]))
+            curve.time_stop = time_stop.to_msg()
+            print(curve.time_stop)
+            time_leg_start = time_stop
             for i in range(len(self.PX_list[leg])):
                 curve.x.append(self.PX_list[leg][i])
                 curve.y.append(self.PY_list[leg][i])
@@ -162,57 +167,60 @@ class BezierTrajectoryPublisher(Node):
                 curve.yaw.append(self.Ppsi_list[leg][j])
             msg_traj.curves.append(curve)
         self.msg_traj = msg_traj  # type: BezierTrajectory
+        print(self.msg_traj)
         self.pub_traj.publish(msg_traj)
+        print('published')
         now = self.get_clock().now()
+        print('now', now)
         sec, nanosec = now.seconds_nanoseconds()
         print('end publish bezier', sec*1e9 + nanosec)
 
-    def publish_reference(self):
-        if not self.start_publish:
-            return
+    # def publish_reference(self):
+    #     if not self.start_publish:
+    #         return
 
-        print('publish ref')
-        now = self.get_clock().now()
-        sec, nanosec = now.seconds_nanoseconds()
-        time_now = sec*1000000000 + nanosec;
-        print('now', time_now)
+    #     print('publish ref')
+    #     now = self.get_clock().now()
+    #     sec, nanosec = now.seconds_nanoseconds()
+    #     time_now = sec*1000000000 + nanosec
+    #     print('now', time_now)
 
-        curves = self.msg_traj.curves # type: List[BezierCurve]
-        for i, curve in enumerate(curves):
-            PX = curve.x
-            PY = curve.y
-            PZ = curve.z
-            Ppsi = curve.yaw
-            T0 = (curve.time_stop - self.msg_traj.time_start)*1e-9
-            if time_now < curve.time_stop:
-                print('on curve', i)
-                break
+    #     curves = self.msg_traj.curves # type: List[BezierCurve]
+    #     for i, curve in enumerate(curves):
+    #         PX = curve.x
+    #         PY = curve.y
+    #         PZ = curve.z
+    #         Ppsi = curve.yaw
+    #         T0 = (curve.time_stop.nanosec - self.msg_traj.time_start.nanosec)*1e-9
+    #         if time_now < curve.time_stop.nanosec:
+    #             print('on curve', i)
+    #             break
 
-        t = (time_now - self.msg_traj.time_start)*1e-9
-        print('t', t)
-        print('T0', T0)
-        print('time stop', curve.time_stop*1e-9)
+    #     t = (time_now - self.msg_traj.time_start.nanosec)*1e-9
+    #     print('t', t)
+    #     print('T0', T0)
+    #     print('time stop', curve.time_stop.nanosec*1e-9)
 
-        traj_x = np.array(self.bezier7['bezier7_traj'](t, T0, PX)).T
-        traj_y = np.array(self.bezier7['bezier7_traj'](t, T0, PY)).T
-        traj_z = np.array(self.bezier7['bezier7_traj'](t, T0, PZ)).T
-        traj_psi = np.array(self.bezier3['bezier3_traj'](t, T0, Ppsi)).T
+    #     traj_x = np.array(self.bezier7['bezier7_traj'](t, T0, PX)).T
+    #     traj_y = np.array(self.bezier7['bezier7_traj'](t, T0, PY)).T
+    #     traj_z = np.array(self.bezier7['bezier7_traj'](t, T0, PZ)).T
+    #     traj_psi = np.array(self.bezier3['bezier3_traj'](t, T0, Ppsi)).T
 
-        print('traj_x', traj_x)
-        print('traj_y', traj_y)
-        print('traj_z', traj_z)
-        print('traj_psi', traj_psi)
+    #     print('traj_x', traj_x)
+    #     print('traj_y', traj_y)
+    #     print('traj_z', traj_z)
+    #     print('traj_psi', traj_psi)
 
-        msg = PoseStamped()
-        msg.header.frame_id = "map"
-        msg.header.stamp = now.to_msg()
-        msg.pose.position.x = traj_x[0, 0]
-        msg.pose.position.y = traj_y[0, 0]
-        msg.pose.position.z = traj_z[0, 0]
-        psi = traj_psi[0, 0]
-        msg.pose.orientation.z = np.sin(psi/2)
-        msg.pose.orientation.w = np.cos(psi/2)
-        self.pub_ref.publish(msg)
+    #     msg = PoseStamped()
+    #     msg.header.frame_id = "map"
+    #     msg.header.stamp = now.to_msg()
+    #     msg.pose.position.x = traj_x[0, 0]
+    #     msg.pose.position.y = traj_y[0, 0]
+    #     msg.pose.position.z = traj_z[0, 0]
+    #     psi = traj_psi[0, 0]
+    #     msg.pose.orientation.z = np.sin(psi/2)
+    #     msg.pose.orientation.w = np.cos(psi/2)
+    #     self.pub_ref.publish(msg)
 
     def publish_path(self):
         if not self.start_publish:
@@ -220,12 +228,12 @@ class BezierTrajectoryPublisher(Node):
 
         print('publishing path')
         msg_path = Path()
-        msg_path.header.frame_id = 'map'
+        msg_path.header.frame_id = 'base_link'
         msg_path.header.stamp = self.get_clock().now().to_msg()
         for x, y, z, psi in zip(self.x_list, self.y_list, self.z_list, self.psi_list):
             pose = PoseStamped()
             pose.header.stamp = self.get_clock().now().to_msg()
-            pose.header.frame_id = 'map'
+            pose.header.frame_id = 'base_link'
             pose.pose.position.x = x
             pose.pose.position.y = y
             pose.pose.position.z = z
