@@ -17,6 +17,7 @@ class BezierTrajectoryPublisher(Node):
 
     def __init__(self):
         super().__init__('bezier_trajectory_publisher')
+
         self.pub_traj = self.create_publisher(
                 BezierTrajectory, '/cerebri/in/bezier_trajectory', 10)
         self.pub_path = self.create_publisher(
@@ -26,8 +27,6 @@ class BezierTrajectoryPublisher(Node):
         self.bezier7 = derive_bezier7()
         self.bezier3 = derive_bezier3()
         self.start_publish = False
-        # self.timer_reference = self.create_timer(0.1, self.publish_reference)
-        self.timer_path = self.create_timer(1, self.publish_path)
 
     def plan_traj(self):
 
@@ -225,15 +224,13 @@ class BezierTrajectoryPublisher(Node):
     def publish_path(self):
         if not self.start_publish:
             return
-
-        print('publishing path')
         msg_path = Path()
-        msg_path.header.frame_id = 'base_link'
+        msg_path.header.frame_id = 'map'
         msg_path.header.stamp = self.get_clock().now().to_msg()
         for x, y, z, psi in zip(self.x_list, self.y_list, self.z_list, self.psi_list):
             pose = PoseStamped()
             pose.header.stamp = self.get_clock().now().to_msg()
-            pose.header.frame_id = 'base_link'
+            pose.header.frame_id = 'map'
             pose.pose.position.x = x
             pose.pose.position.y = y
             pose.pose.position.z = z
@@ -247,22 +244,14 @@ def main(args=None):
     rclpy.init(args=args)
 
     bezier_trajectory_publisher = BezierTrajectoryPublisher()
-
-    bezier_trajectory_publisher.set_parameters([
-        rclpy.parameter.Parameter("use_sim_time",rclpy.Parameter.Type.BOOL,True)
-        ])
-
     bezier_trajectory_publisher.plan_traj()
 
     rclpy.spin_once(bezier_trajectory_publisher)
     bezier_trajectory_publisher.start_publish = True
 
     bezier_trajectory_publisher.publish_bezier()
-    rclpy.spin(bezier_trajectory_publisher)
+    bezier_trajectory_publisher.publish_path()
 
-    # Destroy the node explicitly
-    # (optional - otherwise it will be done automatically
-    # when the garbage collector destroys the node object)
     bezier_trajectory_publisher.destroy_node()
     rclpy.shutdown()
 
