@@ -35,9 +35,9 @@ class BezierTrajectoryPublisher(Node):
             [ # position
             [0, 0, 0],  # wp0, x, y, z
             [0, 0, 2],  # wp0, x, y, z
-            [0, -5, 2],
-            [5, -5, 2],
-            [5, 0, 2],
+            [0, -2, 2],
+            [2, -2, 2],
+            [2, 0, 2],
             [0, 0, 2],
             ],
             [ # velocity
