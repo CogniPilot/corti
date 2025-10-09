@@ -26,7 +26,17 @@ class BezierTrajectoryPublisher(Node):
                 PoseStamped, '/ref', 10)
         self.bezier7 = derive_bezier7()
         self.bezier3 = derive_bezier3()
-        self.start_publish = False
+        self.plan_traj()
+        self.get_logger().info("planned trajectory")
+
+        self.timer = self.create_timer(0.0, self.timer_callback)
+
+    def timer_callback(self):
+        self.get_logger().info("timer callback")
+        self.publish_bezier()
+        self.publish_path()
+        self.timer.cancel()
+        rclpy.shutdown()
 
     def plan_traj(self):
 
@@ -136,27 +146,24 @@ class BezierTrajectoryPublisher(Node):
         self.psi_list = psi_list
 
     def publish_bezier(self):
-        if not self.start_publish:
-            return
-
-        print('publish bezier')
+        self.get_logger().info("publish bezier")
 
         # send bezier trajectory to autopilot
         msg_traj = BezierTrajectory()
         msg_traj.header.frame_id = 'map'
         time_start = self.get_clock().now()
-        print('time_start', time_start)
+        self.get_logger().info("time start {:s}".format(str(time_start)))
         msg_traj.time_start = time_start.to_msg()
-        print('msg_traj', msg_traj.time_start)
+        self.get_logger().info("msg_traj {:s}".format(str(msg_traj.time_start)))
         msg_traj.header.stamp = self.get_clock().now().to_msg()
-        print('msg_header', msg_traj.header.stamp)
+        self.get_logger().info("msg_header {:s}".format(str(msg_traj.header.stamp)))
         time_leg_start = time_start
-        print('leg', time_leg_start)
+        self.get_logger().info("leg {:s}".format(str(time_leg_start)))
         for leg in range(len(self.PX_list)):
             curve = BezierCurve()
             time_stop = time_leg_start + Duration(seconds=int(self.T0_list[leg]))
             curve.time_stop = time_stop.to_msg()
-            print(curve.time_stop)
+            self.get_logger().info("time stop {:s}".format(str(curve.time_stop)))
             time_leg_start = time_stop
             for i in range(len(self.PX_list[leg])):
                 curve.x.append(self.PX_list[leg][i])
@@ -166,13 +173,13 @@ class BezierTrajectoryPublisher(Node):
                 curve.yaw.append(self.Ppsi_list[leg][j])
             msg_traj.curves.append(curve)
         self.msg_traj = msg_traj  # type: BezierTrajectory
-        print(self.msg_traj)
+        self.get_logger().info("msg_traj:".format(str(self.msg_traj)))
         self.pub_traj.publish(msg_traj)
-        print('published')
+        self.get_logger().info("published")
         now = self.get_clock().now()
-        print('now', now)
+        self.get_logger().info("now:".format(str(now)))
         sec, nanosec = now.seconds_nanoseconds()
-        print('end publish bezier', sec*1e9 + nanosec)
+        self.get_logger().info("end publish bezier:".format(str(sec*1e9 + nanosec)))
 
     # def publish_reference(self):
     #     if not self.start_publish:
@@ -222,8 +229,6 @@ class BezierTrajectoryPublisher(Node):
     #     self.pub_ref.publish(msg)
 
     def publish_path(self):
-        if not self.start_publish:
-            return
         msg_path = Path()
         msg_path.header.frame_id = 'map'
         msg_path.header.stamp = self.get_clock().now().to_msg()
@@ -243,17 +248,8 @@ class BezierTrajectoryPublisher(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    bezier_trajectory_publisher = BezierTrajectoryPublisher()
-    bezier_trajectory_publisher.plan_traj()
-
-    rclpy.spin_once(bezier_trajectory_publisher)
-    bezier_trajectory_publisher.start_publish = True
-
-    bezier_trajectory_publisher.publish_bezier()
-    bezier_trajectory_publisher.publish_path()
-
-    bezier_trajectory_publisher.destroy_node()
-    rclpy.shutdown()
+    node = BezierTrajectoryPublisher()
+    rclpy.spin(node)
 
 
 if __name__ == '__main__':
