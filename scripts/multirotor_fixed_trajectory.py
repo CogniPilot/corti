@@ -29,7 +29,15 @@ class BezierTrajectoryPublisher(Node):
         self.plan_traj()
         self.get_logger().info("planned trajectory")
 
+        self.wait_for_valid_clock()
         self.timer = self.create_timer(0.0, self.timer_callback)
+
+    def wait_for_valid_clock(self):
+        if not self.get_parameter('use_sim_time').get_parameter_value().bool_value:
+            return  # wall time mode
+        while rclpy.ok() and self.get_clock().now().nanoseconds == 0:
+            rclpy.spin_once(self, timeout_sec=0.1)
+
 
     def timer_callback(self):
         self.get_logger().info("timer callback")
@@ -173,13 +181,13 @@ class BezierTrajectoryPublisher(Node):
                 curve.yaw.append(self.Ppsi_list[leg][j])
             msg_traj.curves.append(curve)
         self.msg_traj = msg_traj  # type: BezierTrajectory
-        self.get_logger().info("msg_traj:".format(str(self.msg_traj)))
+        self.get_logger().info("msg_traj: {:s}".format(str(self.msg_traj)))
         self.pub_traj.publish(msg_traj)
         self.get_logger().info("published")
         now = self.get_clock().now()
-        self.get_logger().info("now:".format(str(now)))
+        self.get_logger().info("now: {:s}".format(str(now)))
         sec, nanosec = now.seconds_nanoseconds()
-        self.get_logger().info("end publish bezier:".format(str(sec*1e9 + nanosec)))
+        self.get_logger().info("end publish bezier: {:s}".format(str(sec*1e9 + nanosec)))
 
     # def publish_reference(self):
     #     if not self.start_publish:
