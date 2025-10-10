@@ -58,24 +58,25 @@ class BezierTrajectoryPublisher(Node):
         # when needed to give extended reference trajectory
 
         # bezier boundary conditions
+        d = 1
+        vel = 1
+        dt = 2*d/vel
         bc_t = np.array([
             [ # position (x, y, z)
-                [0, 0, 0], # 1, stopped on ground
-                [0, 0, 2], # 2, move up
-                [0, -2, 2], # 3, move -y
-                [2, -2, 2], # 4, move +x
-                [2, 0, 2], # 5, move _y
-                [0, 0, 2], # 6, move -x
-                [0, 0, 0], # 7 (MAX), land
+                [0, 0, 2], # 1
+                [0, -d, 1.5], # 2
+                [0, 0, 2], # 3
+                [0, d, 2.5], # 4
+                [0, 0, 2], # 5
+                [0, 0, 2], # 6
             ],
             [ # velocity
                 [0, 0, 0], # 1, stop
-                [0, 0, 0], # 2, stop
-                [0.5, -0.5, 0], # 3, take turn at given vel
-                [0.5, 0.5, 0], # 4, take turn at given vel
-                [-0.5, 0.5, 0], # 5, take turn at given vel
+                [-vel, 0, 0], # 2, stop
+                [vel/2, vel/2, 0], # 3, take turn at given vel
+                [-vel, 0, 0], # 4, take turn at given vel
+                [0, 0, 0], # 5, take turn at given vel
                 [0, 0, 0], # 6, stop when reach origin
-                [0, 0, 0], # 7 (MAX), stop
             ],
             [ # accel
                 [0, 0, 0], # 1
@@ -84,7 +85,6 @@ class BezierTrajectoryPublisher(Node):
                 [0, 0, 0], # 4
                 [0, 0, 0], # 5
                 [0, 0, 0], # 6
-                [0, 0, 0], # 7 (MAX)
             ],
             [ # jerk
                 [0, 0, 0], # 1
@@ -93,17 +93,15 @@ class BezierTrajectoryPublisher(Node):
                 [0, 0, 0], # 4
                 [0, 0, 0], # 5
                 [0, 0, 0], # 6
-                [0, 0, 0], # 7 (MAX)
             ]])
         bc_psi_list = np.array([
             [ # attitude
                 [0, 0, 0], # 1
-                [0, 0, 0], # 2
-                [0, 0, 0], # 3
-                [0, 0, 0], # 4
-                [0, 0, 0], # 5
+                [0, 0, 0*np.deg2rad(-180)], # 2
+                [0, 0, 0*np.deg2rad(90)], # 3
+                [0, 0, 0*np.deg2rad(180)], # 4
+                [0, 0, 0*np.deg2rad(-90)], # 5
                 [0, 0, 0], # 6
-                [0, 0, 0], # 7 (MAX)
             ],
             [ # angular velocity
                 [0, 0, 0], # 1
@@ -112,7 +110,6 @@ class BezierTrajectoryPublisher(Node):
                 [0, 0, 0], # 4
                 [0, 0, 0], # 5
                 [0, 0, 0], # 6
-                [0, 0, 0], # 7 (MAX)
             ]])
 
         # solve for bezier trajectories
@@ -125,7 +122,7 @@ class BezierTrajectoryPublisher(Node):
         for i in range(bc_t.shape[1] - 1):
             bc = bc_t[:, i:i+2, :]
             bc_psi = bc_psi_list[:, i:i+2, :]
-            T0 = 4
+            T0 = dt
             PX = np.array(self.bezier7['bezier7_solve'](bc[:, 0, 0], bc[:, 1, 0], T0)).reshape(-1)
             PY = np.array(self.bezier7['bezier7_solve'](bc[:, 0, 1], bc[:, 1, 1], T0)).reshape(-1)
             PZ = np.array(self.bezier7['bezier7_solve'](bc[:, 0, 2], bc[:, 1, 2], T0)).reshape(-1)
