@@ -47,70 +47,85 @@ class BezierTrajectoryPublisher(Node):
         rclpy.shutdown()
 
     def plan_traj(self):
+        # 7 boundary conditions creates
+        # 8 trajectories, which is the max
+        # supported by nanopb verison of synapse_pb
+        # which runs on cerebri
+
+        # Bezier msg should not be used to do high level
+        # mission planning, it is just short term
+        # too keep memory small. Resend bezier trajectory
+        # when needed to give extended reference trajectory
 
         # bezier boundary conditions
         bc_t = np.array([
-            [ # position
-            [0, 0, 0],  # wp0, x, y, z
-            [0, 0, 2],  # wp0, x, y, z
-            [0, -2, 2],
-            [2, -2, 2],
-            [2, 0, 2],
-            [0, 0, 2],
+            [ # position (x, y, z)
+                [0, 0, 0], # 1, stopped on ground
+                [0, 0, 2], # 2, move up
+                [0, -2, 2], # 3, move -y
+                [2, -2, 2], # 4, move +x
+                [2, 0, 2], # 5, move _y
+                [0, 0, 2], # 6, move -x
+                [0, 0, 0], # 7 (MAX), land
             ],
             [ # velocity
-            [0, 0, 0.1],  # wp0, x, y, z
-            [0, 0, 0],
-            [0.5, -0.5, 0],
-            [0.5, 0.5, 0],
-            [-0.5, 0.5, 0],
-            [-0.5, 0, 0],
+                [0, 0, 0], # 1, stop
+                [0, 0, 0], # 2, stop
+                [0.5, -0.5, 0], # 3, take turn at given vel
+                [0.5, 0.5, 0], # 4, take turn at given vel
+                [-0.5, 0.5, 0], # 5, take turn at given vel
+                [0, 0, 0], # 6, stop when reach origin
+                [0, 0, 0], # 7 (MAX), stop
             ],
             [ # accel
-            [0, 0, 0],
-            [0, 0, 0],
-            [0, 0, 0],
-            [0, 0, 0],
-            [0, 0, 0],
-            [0, 0, 0],  # wp0, x, y, z
+                [0, 0, 0], # 1
+                [0, 0, 0], # 2
+                [0, 0, 0], # 3
+                [0, 0, 0], # 4
+                [0, 0, 0], # 5
+                [0, 0, 0], # 6
+                [0, 0, 0], # 7 (MAX)
             ],
             [ # jerk
-            [0, 0, 0],
-            [0, 0, 0],
-            [0, 0, 0],
-            [0, 0, 0],  # wp0, x, y, z
-            [0, 0, 0],
-            [0, 0, 0],
+                [0, 0, 0], # 1
+                [0, 0, 0], # 2
+                [0, 0, 0], # 3
+                [0, 0, 0], # 4
+                [0, 0, 0], # 5
+                [0, 0, 0], # 6
+                [0, 0, 0], # 7 (MAX)
             ]])
         bc_psi_list = np.array([
             [ # attitude
-            [0, 0, 0],
-            [0, 0, 0],
-            [0, 0, 0],
-            [0, 0, 0],
-            [0, 0, 0],
-            [0, 0, 0],
+                [0, 0, 0], # 1
+                [0, 0, 0], # 2
+                [0, 0, 0], # 3
+                [0, 0, 0], # 4
+                [0, 0, 0], # 5
+                [0, 0, 0], # 6
+                [0, 0, 0], # 7 (MAX)
             ],
             [ # angular velocity
-            [0, 0, 0],
-            [0, 0, 0],
-            [0, 0, 0],
-            [0, 0, 0],
-            [0, 0, 0],
-            [0, 0, 0],
+                [0, 0, 0], # 1
+                [0, 0, 0], # 2
+                [0, 0, 0], # 3
+                [0, 0, 0], # 4
+                [0, 0, 0], # 5
+                [0, 0, 0], # 6
+                [0, 0, 0], # 7 (MAX)
             ]])
 
         # solve for bezier trajectories
-        k = 10
         T0_list = []
         PX_list = []
         PY_list = []
         PZ_list = []
         Ppsi_list = []
+
         for i in range(bc_t.shape[1] - 1):
             bc = bc_t[:, i:i+2, :]
             bc_psi = bc_psi_list[:, i:i+2, :]
-            T0 = 4 #find_opt_multirotor_time(8, 4, bc, bc_psi, k, 1)[0]
+            T0 = 4
             PX = np.array(self.bezier7['bezier7_solve'](bc[:, 0, 0], bc[:, 1, 0], T0)).reshape(-1)
             PY = np.array(self.bezier7['bezier7_solve'](bc[:, 0, 1], bc[:, 1, 1], T0)).reshape(-1)
             PZ = np.array(self.bezier7['bezier7_solve'](bc[:, 0, 2], bc[:, 1, 2], T0)).reshape(-1)
@@ -120,6 +135,7 @@ class BezierTrajectoryPublisher(Node):
             PY_list.append(PY)
             PZ_list.append(PZ)
             Ppsi_list.append(Ppsi)
+
         self.T0_list = T0_list
         self.PX_list = PX_list
         self.PY_list = PY_list
@@ -188,53 +204,6 @@ class BezierTrajectoryPublisher(Node):
         self.get_logger().info("now: {:s}".format(str(now)))
         sec, nanosec = now.seconds_nanoseconds()
         self.get_logger().info("end publish bezier: {:s}".format(str(sec*1e9 + nanosec)))
-
-    # def publish_reference(self):
-    #     if not self.start_publish:
-    #         return
-
-    #     print('publish ref')
-    #     now = self.get_clock().now()
-    #     sec, nanosec = now.seconds_nanoseconds()
-    #     time_now = sec*1000000000 + nanosec
-    #     print('now', time_now)
-
-    #     curves = self.msg_traj.curves # type: List[BezierCurve]
-    #     for i, curve in enumerate(curves):
-    #         PX = curve.x
-    #         PY = curve.y
-    #         PZ = curve.z
-    #         Ppsi = curve.yaw
-    #         T0 = (curve.time_stop.nanosec - self.msg_traj.time_start.nanosec)*1e-9
-    #         if time_now < curve.time_stop.nanosec:
-    #             print('on curve', i)
-    #             break
-
-    #     t = (time_now - self.msg_traj.time_start.nanosec)*1e-9
-    #     print('t', t)
-    #     print('T0', T0)
-    #     print('time stop', curve.time_stop.nanosec*1e-9)
-
-    #     traj_x = np.array(self.bezier7['bezier7_traj'](t, T0, PX)).T
-    #     traj_y = np.array(self.bezier7['bezier7_traj'](t, T0, PY)).T
-    #     traj_z = np.array(self.bezier7['bezier7_traj'](t, T0, PZ)).T
-    #     traj_psi = np.array(self.bezier3['bezier3_traj'](t, T0, Ppsi)).T
-
-    #     print('traj_x', traj_x)
-    #     print('traj_y', traj_y)
-    #     print('traj_z', traj_z)
-    #     print('traj_psi', traj_psi)
-
-    #     msg = PoseStamped()
-    #     msg.header.frame_id = "map"
-    #     msg.header.stamp = now.to_msg()
-    #     msg.pose.position.x = traj_x[0, 0]
-    #     msg.pose.position.y = traj_y[0, 0]
-    #     msg.pose.position.z = traj_z[0, 0]
-    #     psi = traj_psi[0, 0]
-    #     msg.pose.orientation.z = np.sin(psi/2)
-    #     msg.pose.orientation.w = np.cos(psi/2)
-    #     self.pub_ref.publish(msg)
 
     def publish_path(self):
         msg_path = Path()
