@@ -58,7 +58,7 @@ class BezierTrajectoryPublisher(Node):
         # when needed to give extended reference trajectory
 
         # bezier boundary conditions
-        d = 1
+        d = 2
         vel = 1
         dt = 2*d/vel
         bc_t = np.array([
