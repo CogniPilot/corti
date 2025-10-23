@@ -44,7 +44,6 @@ class BezierTrajectoryPublisher(Node):
         self.publish_bezier()
         self.publish_path()
         self.timer.cancel()
-        rclpy.shutdown()
 
     def plan_traj(self):
         # 7 boundary conditions creates
@@ -61,6 +60,7 @@ class BezierTrajectoryPublisher(Node):
         d = 2
         vel = 1
         dt = 2*d/vel
+        do_rotation= 0  # 1 to do rotation, 0 to not do rotation
         bc_t = np.array([
             [ # position (x, y, z)
                 [0, 0, 2], # 1
@@ -96,12 +96,12 @@ class BezierTrajectoryPublisher(Node):
             ]])
         bc_psi_list = np.array([
             [ # attitude
-                [0, 0, 0], # 1
-                [0, 0, 0*np.deg2rad(-180)], # 2
-                [0, 0, 0*np.deg2rad(90)], # 3
-                [0, 0, 0*np.deg2rad(180)], # 4
-                [0, 0, 0*np.deg2rad(-90)], # 5
-                [0, 0, 0], # 6
+                [0, 0, do_rotation*np.deg2rad(-45)], # 1
+                [0, 0, do_rotation*np.deg2rad(135)], # 2
+                [0, 0, do_rotation*np.deg2rad(45)], # 3
+                [0, 0, do_rotation*np.deg2rad(-135)], # 4
+                [0, 0, do_rotation*np.deg2rad(-45)], # 5
+                [0, 0, do_rotation*np.deg2rad(-45)], # 6
             ],
             [ # angular velocity
                 [0, 0, 0], # 1
@@ -223,7 +223,8 @@ def main(args=None):
     rclpy.init(args=args)
 
     node = BezierTrajectoryPublisher()
-    rclpy.spin(node)
+    rclpy.spin_once(node, timeout_sec=10)
+    rclpy.shutdown
 
 
 if __name__ == '__main__':
