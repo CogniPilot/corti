@@ -11,25 +11,33 @@ from nav_msgs.msg import Path, Odometry
 from std_msgs.msg import Header
 from typing import List
 import numpy as np
-import copy
+from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 
 class BezierTrajectoryPublisher(Node):
 
     def __init__(self):
         super().__init__('bezier_trajectory_publisher')
 
+        # --- Define reliable QoS ---
+        reliable_qos = QoSProfile(
+            reliability=QoSReliabilityPolicy.RELIABLE,
+            history=QoSHistoryPolicy.KEEP_LAST,
+            depth=10
+        )
+
+        # --- Publishers using Reliable QoS ---
         self.pub_traj = self.create_publisher(
-                BezierTrajectory, '/cerebri/in/bezier_trajectory', 10)
-        self.pub_path = self.create_publisher(
-                Path, '/path', 10)
-        self.pub_ref = self.create_publisher(
-                PoseStamped, '/ref', 10)
+            BezierTrajectory, '/cerebri/in/bezier_trajectory', reliable_qos)
+        self.pub_path = self.create_publisher(Path, '/path', reliable_qos)
+        self.pub_ref = self.create_publisher(PoseStamped, '/ref', reliable_qos)
         self.bezier7 = derive_bezier7()
         self.bezier3 = derive_bezier3()
         self.plan_traj()
         self.get_logger().info("planned trajectory")
 
         self.wait_for_valid_clock()
+        self.wait_for_subscribers(self.pub_traj)
+        
         self.timer = self.create_timer(0.0, self.timer_callback)
 
     def wait_for_valid_clock(self):
@@ -37,6 +45,17 @@ class BezierTrajectoryPublisher(Node):
             return  # wall time mode
         while rclpy.ok() and self.get_clock().now().nanoseconds == 0:
             rclpy.spin_once(self, timeout_sec=0.1)
+
+    def wait_for_subscribers(self, publisher, timeout_sec=5.0):
+        start = self.get_clock().now()
+        while publisher.get_subscription_count() == 0 and rclpy.ok():
+            elapsed = (self.get_clock().now() - start).nanoseconds / 1e9
+            if elapsed > timeout_sec:
+                self.get_logger().warn("No subscribers connected — continuing anyway.")
+                break
+            self.get_logger().info("Waiting for subscriber...")
+            rclpy.spin_once(self, timeout_sec=1)
+        self.get_logger().info("Subscriber ready or timeout reached.")
 
 
     def timer_callback(self):
