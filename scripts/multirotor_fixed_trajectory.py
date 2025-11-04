@@ -46,7 +46,7 @@ class BezierTrajectoryPublisher(Node):
         while rclpy.ok() and self.get_clock().now().nanoseconds == 0:
             rclpy.spin_once(self, timeout_sec=0.1)
 
-    def wait_for_subscribers(self, publisher, timeout_sec=5.0):
+    def wait_for_subscribers(self, publisher, timeout_sec=60.0):
         start = self.get_clock().now()
         while publisher.get_subscription_count() == 0 and rclpy.ok():
             elapsed = (self.get_clock().now() - start).nanoseconds / 1e9
@@ -191,7 +191,7 @@ class BezierTrajectoryPublisher(Node):
         # send bezier trajectory to autopilot
         msg_traj = BezierTrajectory()
         msg_traj.header.frame_id = 'map'
-        time_start = self.get_clock().now()
+        time_start = self.get_clock().now() + Duration(seconds=5)
         self.get_logger().info("time start {:s}".format(str(time_start)))
         msg_traj.time_start = time_start.to_msg()
         self.get_logger().info("msg_traj {:s}".format(str(msg_traj.time_start)))
